@@ -29,7 +29,11 @@ Es werden zur Zeit Funktionen zum Ein-/Ausschalten und zum Senden der Fernbedien
 Der Status des Gerätes wird im eingestellten Intervall gelesen und in den Statusvariablen abgelegt.
 
 ### unterstützte Modelle
-Leider gibt es keine Dokumentation von Sony zu den angebotenen Schnittstellen der Geräte. Entwickelt und getestet wurde das Modul mit einem KD-75XE9405. Ob und wieweit es auch mit anderen Geräten funktioniert, muss ausprobert werden.
+Leider gibt es keine Dokumentation von Sony zu den angebotenen Schnittstellen der Geräte. Getestet wurde das Modul bislang mit folgenden Modellen:
+- KD-75XE9405
+- KD-65X8505B
+
+Ob und wieweit es auch mit anderen Geräten funktioniert, muss ausprobert werden. Würde mich über Feedback freuen.
 
 
 ## 2. Voraussetzungen
@@ -49,7 +53,7 @@ Leider gibt es keine Dokumentation von Sony zu den angebotenen Schnittstellen de
 
 In IP-Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Instanz anzulegen.
 
-Über _**SonyTV**_ kann die Instanz gefunden werden.
+Über _**Sony TV**_ kann die Instanz gefunden werden.
 
 
 ## 4. Funktionsreferenz
@@ -63,7 +67,7 @@ In IP-Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Inst
 | :---------: | :-----: | :----------: | :-------------------------------------------------------------------: |
 | Host        | string  |              | IP Adresse des Sony TV                  |
 | Bezeichnung | string  |  Symcon(\<ServerName\>)            | Die Bezeichnung unter der die App am TV angezeigt werden soll                            |
-| Interval    | int     |              | Wenn die Statusvariablen zyklisch aktualisiert werden sollen, dann ist hier das Intervall in Sekunden anzugeben|
+| Interval    | int     |  10            | Wenn die Statusvariablen zyklisch aktualisiert werden sollen, dann ist hier das Intervall in Sekunden anzugeben|
 
 ### b. Testfunktionen
 
@@ -72,8 +76,6 @@ Anmeldung starten
 Anmeldecode senden
 
 Alle Daten aktualisieren
-
-Codes der Fernbedienung auslesen
 
 ## 6. Anhang
 
@@ -94,13 +96,14 @@ Einschalten/Ausschalten des TV
 Parameter $Status: false (Off) / true (On)
 
 ```php
-STV_SendRemoteKey(int $InstanceID, bool $Value)
+STV_SendRemoteKey(int $InstanceID, string $Value)
 ```
 Sendet einen Key der Fernbedienung
 
 Parameter $Value: Name des Keys
 
-Die Keys sind je Gerät unterschiedlich und müssen einmalig ausgelesen werden.
+Die Keys sind je Gerät unterschiedlich und werden automatisch bei der Anmeldung ausgelesen.
+
 Die unterstützen Keys können dann dem Profil _*STV.RemoteKeys*_ entnommen werden.
 ```php
 STV_StartRegistration(int $InstanceID)

@@ -58,8 +58,9 @@ class SonyTV extends IPSModule
                 break;
 
             case 'SendRemoteKey':
-                $this->SendRemoteKey($Value);
-                SetValue($this->GetIDForIdent($Ident), $Value);
+                $VariableID = $this->GetIDForIdent($Ident);
+                SetValue($VariableID, $Value);
+                $this->SendRemoteKey(GetValueFormatted($VariableID));
 
                 break;
 
@@ -129,20 +130,16 @@ class SonyTV extends IPSModule
         }
 
         //Cookie aus Header ermitteln und in Property setzen
-        list($headers) = explode("\r\n\r\n", $ret, 2);
-        $headers = explode("\n", $headers);
-        foreach($headers as $header) {
-            if (stripos($header, 'Set-Cookie:') !== false) {
-                $header = substr($header,0,strpos($header,";"));
-                $auth = strstr($header, "a");
-                IPS_SetProperty($this->InstanceID, 'Cookie', $auth);
-                IPS_ApplyChanges($this->InstanceID);
-                return true;
-            }
+        if (!$this->ExtractAndSaveCookie($ret)){
+            return false;
         }
 
-        return false;
+        //RemoteController Infos auslesen und in Profil schreiben
+        if (!$this->GetRemoteControllerInfo()){
+            return false;
+        }
 
+        return true;
     }
 
     public function UpdateAll():bool
@@ -181,42 +178,6 @@ class SonyTV extends IPSModule
         } else {
             return false;
         }
-    }
-
-    public function GetRemoteControllerInfo(){
-        if (IPS_GetInstance($this->InstanceID)['InstanceStatus'] != IS_ACTIVE){
-            return false;
-        }
-
-        $ret = $this->callPostRequest('system', 'getRemoteControllerInfo', json_encode([]), [], false, '1.0');
-
-        if (!$ret){
-            trigger_error('callPostRequest failed!');
-            $this->SetValueInteger('PowerStatus', 0); //off
-            $this->SetStatus(IS_INACTIVE);
-            return false;
-        }
-
-        $json_a = json_decode($ret,true);
-
-        if (!isset($json_a['result'])){
-            trigger_error('Unexpected return: ' . $ret);
-            return false;
-        }
-
-        $RemoteControllerInfo = $ret;
-
-        if ($RemoteControllerInfo != $this->ReadPropertyString('RemoteControllerInfo')){
-            // wenn sich die Informationen zum ersten mal geholt wurden oder sie sich geändert haben,
-            // dann werden sie gespeíchert und das Profil wird aktualisiert
-            IPS_SetProperty($this->InstanceID, 'RemoteControllerInfo', $RemoteControllerInfo);
-            IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
-
-            $this->WriteRemoteControllerInfoProfile($RemoteControllerInfo);
-        }
-
-        return $RemoteControllerInfo;
-
     }
 
     public function GetPowerStatus()
@@ -287,6 +248,7 @@ class SonyTV extends IPSModule
         }
         SetValue($this->GetIDForIdent('PowerStatus'), $PowerStatus);
     }
+
     public function GetVolume()
     {
         if (IPS_GetInstance($this->InstanceID)['InstanceStatus'] != IS_ACTIVE){
@@ -328,11 +290,13 @@ class SonyTV extends IPSModule
         return $ret;
     }
 
-
-    public function SendRemoteKey($Value) {
+    public function SendRemoteKey(string $Value):bool {
         $RemoteControllerInfo = json_decode($this->ReadPropertyString('RemoteControllerInfo'), true);
 
-        $codes = $RemoteControllerInfo['result'][1];
+        $IRCCCode = $this->getIRCCCode($RemoteControllerInfo['result'][1], $Value);
+        if ($IRCCCode === false){
+            trigger_error('Invalid RemoteKey');
+        }
 
         $tv_ip = $this->ReadPropertyString('Host');
         $cookie = $this->ReadPropertyString('Cookie');
@@ -341,7 +305,7 @@ class SonyTV extends IPSModule
         $data .= '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">';
         $data .= '   <s:Body>';
         $data .= '      <u:X_SendIRCC xmlns:u="urn:schemas-sony-com:service:IRCC:1">';
-        $data .= '         <IRCCCode>'.$codes[$Value]['value'].'</IRCCCode>';
+        $data .= '         <IRCCCode>'.$IRCCCode.'</IRCCCode>';
         $data .= '      </u:X_SendIRCC>';
         $data .= '   </s:Body>';
         $data .= '</s:Envelope>';
@@ -354,9 +318,26 @@ class SonyTV extends IPSModule
         $headers[] = "Content-Length: " . strlen($data);
         $headers[] = 'SOAPAction: "urn:schemas-sony-com:service:IRCC:1#X_SendIRCC"';
 
-        $this->sendCurlPost($tv_ip, 'IRCC', $headers, $data, true);
+        $ret = $this->sendCurlPost($tv_ip, 'IRCC', $headers, $data, true);
+
+        if ($ret === false){
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private function getIRCCCode($codes, $Name){
+
+        foreach ($codes as $code){
+            if ($code['name'] == $Name){
+                return $code['value'];
+                break;
+            }
         }
 
+        return false;
+    }
     private function callPostRequest($service, $cmd, $params, $headers, $returnHeader, $version){
         $tv_ip = $this->ReadPropertyString('Host');
         $cookie = $this->ReadPropertyString('Cookie');
@@ -370,7 +351,6 @@ class SonyTV extends IPSModule
         return $this->sendCurlPost($tv_ip, $service, $headers, $data, $returnHeader);
 
     }
-
 
     private function sendCurlPost($tvip, $service, $headers, $data, $returnHeader) {
         parent::SendDebug('send:' , $data, 0);
@@ -388,6 +368,39 @@ class SonyTV extends IPSModule
         return $ausgabe;
     }
 
+    private function GetRemoteControllerInfo()
+    {
+
+        $ret = $this->callPostRequest('system', 'getRemoteControllerInfo', json_encode([]), [], false, '1.0');
+
+        if (!$ret){
+            trigger_error('callPostRequest failed!');
+            $this->SetValueInteger('PowerStatus', 0); //off
+            $this->SetStatus(IS_INACTIVE);
+            return false;
+        }
+
+        $json_a = json_decode($ret,true);
+
+        if (!isset($json_a['result'])){
+            trigger_error('Unexpected return: ' . $ret);
+            return false;
+        }
+
+        $RemoteControllerInfo = $ret;
+
+        if ($RemoteControllerInfo != $this->ReadPropertyString('RemoteControllerInfo')){
+            // wenn sich die Informationen zum ersten mal geholt wurden oder sie sich geändert haben,
+            // dann werden sie gespeíchert und das Profil wird aktualisiert
+            IPS_SetProperty($this->InstanceID, 'RemoteControllerInfo', $RemoteControllerInfo);
+            IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
+
+            $this->WriteRemoteControllerInfoProfile($RemoteControllerInfo);
+        }
+
+        return true;
+    }
+
     private function WriteRemoteControllerInfoProfile(String $RemoteControllerInfo){
         $codes = json_decode($RemoteControllerInfo, true)['result'][1];
 
@@ -396,15 +409,34 @@ class SonyTV extends IPSModule
             $ass[]= [$key, $code['name'],  '', -1];
         }
 
-        var_dump ($ass);
         $this->CreateProfileIntegerAss('STV.RemoteKey', '', '', '', 0, 0, $ass);
 
-}
+    }
+
+    private function ExtractAndSaveCookie($return){
+        $CookieFound = false;
+        list($headers) = explode("\r\n\r\n", $return, 2);
+        $headers = explode("\n", $headers);
+        foreach($headers as $header) {
+            if (stripos($header, 'Set-Cookie:') !== false) {
+                $header = substr($header,0,strpos($header,";"));
+                $auth = strstr($header, "a");
+                IPS_SetProperty($this->InstanceID, 'Cookie', $auth);
+                IPS_ApplyChanges($this->InstanceID);
+                $CookieFound = true;
+                break;
+            }
+        }
+
+        return $CookieFound;
+    }
+
+
+
     private function SetValueInteger($Ident, $Value)
     {
         $ID = $this->GetIDForIdent($Ident);
-        if (GetValueInteger($ID) <> $Value)
-        {
+        if (GetValueInteger($ID) <> $Value){
             SetValueInteger($ID, intval($Value));
             return true;
         }
@@ -414,8 +446,7 @@ class SonyTV extends IPSModule
     private function SetValueString($Ident, $Value)
     {
         $ID = $this->GetIDForIdent($Ident);
-        if (GetValueString($ID) <> $Value)
-        {
+        if (GetValueString($ID) <> $Value){
             SetValueString($ID, strval($Value));
             return true;
         }
