@@ -271,7 +271,7 @@ class SonyTV extends IPSModule
     {
         $RemoteControllerInfo = json_decode($this->ReadPropertyString('RemoteControllerInfo'), true);
 
-        $IRCCCode = $this->GetIRCCCode($RemoteControllerInfo['result'][1], $Value);
+        $IRCCCode = $this->GetIRCCCode($RemoteControllerInfo, $Value);
         if ($IRCCCode === false) {
             trigger_error('Invalid RemoteKey');
         }
@@ -653,6 +653,7 @@ class SonyTV extends IPSModule
             return false;
         }
 
+        $response = json_encode(($json_a['result'][1]));
         IPS_SetProperty($this->InstanceID, 'RemoteControllerInfo', $response);
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
@@ -687,7 +688,7 @@ class SonyTV extends IPSModule
 
     private function WriteRemoteControllerInfoProfile(String $RemoteControllerInfo)
     {
-        $codes = json_decode($RemoteControllerInfo, true)['result'][1];
+        $codes = json_decode($RemoteControllerInfo, true);
 
         $ass[] = [-1, '-',  '', -1];
         foreach ($codes as $key => $code) {
