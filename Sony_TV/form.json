@@ -17,7 +17,12 @@
     { "type": "Label", "label": "Der angezeigte Code ist zeitnah unter TV-Code anzugeben. Anschließend bitte die Anmeldung mit 'Anmelde Code senden' abschließen."},
     { "type": "ValidationTextBox", "name": "TVCode", "caption": "TV Code"},
     { "type": "Button", "label": "Anmelde Code senden", "onClick": "if (STV_SendAuthorizationKey($id, $TVCode)){echo 'Gesendet!';} else {echo 'Fehler beim Senden';}" },
-    { "type": "Button", "label": "Alle Daten aktualisieren", "onClick": "if (STV_UpdateAll($id)){echo 'OK.';} else {echo 'Fehler beim Aktualisieren';}" }
+    { "type": "Label", "label": "Mit 'Statusvariablen aktualisieren' können unabhängig vom eingestellten Intervall die Variablen einmalig aktualisiert werden."},
+    { "type": "Button", "label": "Statusvariablen aktualisieren", "onClick": "if (STV_UpdateAll($id)){echo 'OK.';} else {echo 'Fehler beim Aktualisieren';}" },
+    { "type": "Label", "label": "Mit 'Applikationsliste aktualisieren' werden die installierten Apps neu eingelesen."},
+    { "type": "Button", "label": "Applikationsliste aktualisieren", "onClick": "if (STV_UpdateApplicationList($id)){echo 'OK.';} else {echo 'Fehler beim Aktualisieren';}" },
+    { "type": "Label", "label": "Mit 'Datei mit API Informationen erstellen' wird im IP-Symcon Log-Verzeichnis eine Supportdatei erstellt. Sie beinhaltet eine Auflistung aller vom TV-Gerät unterstützten Funktion."},
+    { "type": "Button", "label": "Datei mit API Informationen erstellen", "onClick": "if (STV_WriteAPIInformationToFile($id, '')){echo 'OK.';} else {echo 'Fehler beim Schreiben der Datei';}" }
   ],
   "status":
   [
