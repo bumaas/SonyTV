@@ -18,7 +18,8 @@ class SonyTV extends IPSModule
     const STATUS_INST_IP_IS_EMPTY = 202;
     const STATUS_INST_IP_IS_INVALID = 204; //IP Adresse ist ungültig
 
-    const VERSION = '0.8.1';
+
+    const VERSION = '0.8.2';
 
     // Überschreibt die interne IPS_Create($id) Funktion
     public function Create()
@@ -323,7 +324,8 @@ class SonyTV extends IPSModule
             }
         }
 
-        file_put_contents($filename, $return);
+        IPS_LogMessage(get_class().'::'.__FUNCTION__,'Writing API Information to \''.$filename.'\'');
+        return (file_put_contents($filename, $return) > 0);
     }
 
     public function UpdateApplicationList()
@@ -676,6 +678,7 @@ class SonyTV extends IPSModule
 
     private function WriteApplicationListProfile(String $ApplicationList)
     {
+        $ProfileName = 'STV.Applications';
         $Applications = json_decode($ApplicationList, true);
 
         $ass[] = [-1, '-',  '', -1];
@@ -683,11 +686,18 @@ class SonyTV extends IPSModule
             $ass[] = [$key, html_entity_decode($Application['title']),  '', -1];
         }
 
-        $this->CreateProfileIntegerAss('STV.Applications', '', '', '', 0, 0, $ass);
+        if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS){
+            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName .'\' übernommen:' . PHP_EOL
+                . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
+                . PHP_EOL . PHP_EOL;
+        }
+
+        $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, array_slice($ass, 0, 128));
     }
 
     private function WriteRemoteControllerInfoProfile(String $RemoteControllerInfo)
     {
+        $ProfileName = 'STV.RemoteKey';
         $codes = json_decode($RemoteControllerInfo, true);
 
         $ass[] = [-1, '-',  '', -1];
@@ -695,7 +705,13 @@ class SonyTV extends IPSModule
             $ass[] = [$key, $code['name'],  '', -1];
         }
 
-        $this->CreateProfileIntegerAss('STV.RemoteKey', '', '', '', 0, 0, $ass);
+        if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS){
+            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName .'\' übernommen:' . PHP_EOL
+                . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
+                . PHP_EOL . PHP_EOL;
+        }
+
+        $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, $ass);
     }
 
     private function ExtractAndSaveCookie($return)
@@ -703,6 +719,10 @@ class SonyTV extends IPSModule
         $CookieFound = false;
         list($headers) = explode("\r\n\r\n", $return, 2);
         $headers = explode("\n", $headers);
+        if (count($headers) == 0) {
+            trigger_error('Unerwarteter Header: '.$return);
+        }
+
         $Cookie = [];
         foreach ($headers as $SetCookie) {
             if (stripos($SetCookie, 'Set-Cookie:') !== false) {
@@ -710,7 +730,7 @@ class SonyTV extends IPSModule
                 // Set-Cookie: auth=246554AA89E869DCD1FFC5F8C726AF5803F3AC6A; Path=/sony/; Max-Age=1209600; Expires=Do., 26 Apr. 2018 14:31:14 GMT+00:00
                 $arr = $this->GetCookieElements(substr($SetCookie, strlen('Set-Cookie: ')));
                 $Cookie['auth'] = $arr['auth'];
-                $Cookie['ExpirationDate'] = time() + $arr[' Max-Age'];
+                $Cookie['ExpirationDate'] = time() + $arr['max-age'];
                 IPS_SetProperty($this->InstanceID, 'Cookie', json_encode($Cookie));
                 IPS_ApplyChanges($this->InstanceID);
                 $CookieFound = true;
@@ -727,7 +747,7 @@ class SonyTV extends IPSModule
         $elements = explode(';', $SetCookie);
         foreach ($elements as $element) {
             $expl = explode('=', $element);
-            $ret[$expl[0]] = $expl[1];
+            $ret[trim(strtolower($expl[0]))] = $expl[1];
         }
 
         return $ret;
