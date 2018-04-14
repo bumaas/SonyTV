@@ -325,8 +325,9 @@ class SonyTV extends IPSModule
             }
         }
 
-        IPS_LogMessage(get_class().'::'.__FUNCTION__,'Writing API Information to \''.$filename.'\'');
-        return (file_put_contents($filename, $return) > 0);
+        IPS_LogMessage(get_class().'::'.__FUNCTION__, 'Writing API Information to \''.$filename.'\'');
+
+        return file_put_contents($filename, $return) > 0;
     }
 
     public function UpdateApplicationList()
@@ -687,10 +688,10 @@ class SonyTV extends IPSModule
             $ass[] = [$key, html_entity_decode($Application['title']),  '', -1];
         }
 
-        if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS){
-            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName .'\' übernommen:' . PHP_EOL
-                . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
-                . PHP_EOL . PHP_EOL;
+        if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
+            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \''.$ProfileName.'\' übernommen:'.PHP_EOL
+                .implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
+                .PHP_EOL.PHP_EOL;
         }
 
         $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, array_slice($ass, 0, 128));
@@ -706,10 +707,10 @@ class SonyTV extends IPSModule
             $ass[] = [$key, $code['name'],  '', -1];
         }
 
-        if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS){
-            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName .'\' übernommen:' . PHP_EOL
-                . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
-                . PHP_EOL . PHP_EOL;
+        if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
+            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \''.$ProfileName.'\' übernommen:'.PHP_EOL
+                .implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
+                .PHP_EOL.PHP_EOL;
         }
 
         $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, $ass);
