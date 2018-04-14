@@ -18,6 +18,7 @@ class SonyTV extends IPSModule
     const STATUS_INST_IP_IS_EMPTY = 202;
     const STATUS_INST_IP_IS_INVALID = 204; //IP Adresse ist ungültig
 
+    const MAX_PROFILE_ASSOCIATIONS = 128;
 
     const VERSION = '0.8.2';
 
