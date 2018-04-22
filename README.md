@@ -33,8 +33,8 @@ Der Status des Gerätes wird im eingestellten Intervall gelesen und in den Statu
 #### Unterstützte Modelle:
 
 Leider gibt es keine Dokumentation von Sony zu den angebotenen Schnittstellen der Geräte. Getestet wurde das Modul bislang mit folgenden Modellen:
-- KD-75XE9405
-- KD-65X8505B
+- KD-75XE9405 (Firmware V6.2 - mit Android TV)
+- KD-65X8505B (Firmware v3.0)
 
 Ob und wieweit es auch mit anderen Geräten funktioniert, muss ausprobert werden. Würde mich über Feedback freuen.
 
@@ -83,6 +83,27 @@ STV_SetPowerStatus(int $InstanceID, bool $Status)
 Einschalten/Ausschalten des TV
 
 Parameter $Status: false (Off) / true (On)
+
+```php
+STV_SetAudioMute(int $InstanceID, bool $Status)
+```
+TV Gerät auf lautlos setzen
+
+Parameter $Status: false (Off) / true (On)
+
+```php
+STV_SetSpeakerVolume(int $InstanceID, int $Volume)
+```
+Setzt die Laustärke der Lautsprecher
+
+Parameter $Volume: Lautstärke von 0 .. 100
+
+```php
+STV_SetHeadphoneVolume(int $InstanceID, int $Volume)
+```
+Setzt die Laustärke des Kopfhörerausgangs
+
+Parameter $Volume: Lautstärke von 0 .. 100
 
 ```php
 STV_SendRemoteKey(int $InstanceID, string $Value)
@@ -134,7 +155,12 @@ Alle Statusvariablen werden aktualisiert.
 ```php
 STV_UpdateApplicationList(int $InstanceID)
 ```
-Die auf dem TV installierten Applikationen werden neu eingelesen und das Profil der Statusvariablen Application aktualisiert. 
+Die auf dem TV installierten Applikationen werden neu eingelesen und das Profil der Statusvariablen Application aktualisiert. Da die Anzahl der Assoziationen eines Profils auf 128 begrenzt sind, kann es hier zu einem Hinweis
+kommen, dass nicht alle Applikationen in die Liste aufgenommen wurden.
+
+Bei Bedarf - um z.B. eine eigene Auswahlliste zu erstellen - kann die vollständige Liste dem Property ApplicationList entnommen werden. Beispiel:
+
+IPS_GetProperty(int $InstanceID, 'ApplicationList'); 
 
 ```php
 STV_WriteAPIInformationToFile(int $InstanceID, $filename)

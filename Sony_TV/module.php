@@ -57,28 +57,40 @@ class SonyTV extends IPSModule
                 break;
 
             case 'SendRemoteKey':
-                $VariableID = $this->GetIDForIdent($Ident);
                 if ($Value >= 0) {
-                    SetValue($VariableID, $Value);
-                    $this->SendRemoteKey(GetValueFormatted($VariableID));
+                    SetValue($Ident, $Value);
+                    $this->SendRemoteKey(GetValueFormatted($this->GetIDForIdent($Ident)));
                 }
                 break;
 
             case 'InputSource':
-                $VariableID = $this->GetIDForIdent($Ident);
                 if ($Value >= 0) {
-                    SetValue($VariableID, $Value);
-                    $this->SetInputSource(GetValueFormatted($VariableID));
+                    $this->SetValue($Ident, $Value);
+                    $this->SetInputSource(GetValueFormatted($this->GetIDForIdent($Ident)));
                 }
 
                 break;
 
             case 'Application':
-                $VariableID = $this->GetIDForIdent($Ident);
                 if ($Value >= 0) {
-                    SetValue($VariableID, $Value);
-                    $this->StartApplication(htmlentities(GetValueFormatted($VariableID)));
+                    $this->SetValue($Ident, $Value);
+                    $this->StartApplication(htmlentities(GetValueFormatted($this->GetIDForIdent($Ident))));
                 }
+
+                break;
+
+            case 'AudioMute':
+                $this->SetAudioMute($Value);
+
+                break;
+
+            case 'SpeakerVolume':
+                $this->SetSpeakerVolume($Value);
+
+                break;
+
+            case 'HeadphoneVolume':
+                $this->SetHeadphoneVolume($Value);
 
                 break;
 
@@ -250,6 +262,57 @@ class SonyTV extends IPSModule
         return true;
     }
 
+    public function SetAudioMute(bool $status)
+    {
+        $response = $this->callPostRequest('audio', 'setAudioMute', json_encode([['status' => $status]]), [], false, '1.0');
+
+        $json_a = json_decode($response, true);
+
+        if (!$response || !isset($json_a['result'])) {
+            trigger_error('Unexpected return: '.$response);
+
+            return false;
+        }
+
+        $this->SetValue('AudioMute', $status);
+
+        return true;
+    }
+
+    public function SetSpeakerVolume(int $volume)
+    {
+        $response = $this->callPostRequest('audio', 'setAudioVolume', json_encode([['target' => 'speaker', 'volume' => (string) $volume]]), [], false, '1.0');
+
+        $json_a = json_decode($response, true);
+
+        if (!$response || !isset($json_a['result'])) {
+            trigger_error('Unexpected return: '.$response);
+
+            return false;
+        }
+
+        $this->SetValue('SpeakerVolume', $volume);
+
+        return true;
+    }
+
+    public function SetHeadphoneVolume(int $volume)
+    {
+        $response = $this->callPostRequest('audio', 'setAudioVolume', json_encode([['target' => 'headphone', 'volume' => (string) $volume]]), [], false, '1.0');
+
+        $json_a = json_decode($response, true);
+
+        if (!$response || !isset($json_a['result'])) {
+            trigger_error('Unexpected return: '.$response);
+
+            return false;
+        }
+
+        $this->SetValue('HeadphoneVolume', $volume);
+
+        return true;
+    }
+
     public function StartApplication(string $application)
     {
         $Applications = json_decode($this->ReadPropertyString('ApplicationList'), true);
@@ -380,12 +443,16 @@ class SonyTV extends IPSModule
         foreach ($json_a['result'][0] as $target) {
             switch ($target['target']) {
                 case 'speaker':
+                    $this->SetValueBoolean('AudioMute', $target['mute']);
                     $this->SetValueInteger('SpeakerVolume', $target['volume']);
+                    $response[$target['target']] = ['mute' => $target['mute']];
                     $response[$target['target']] = ['volume' => $target['volume']];
                     break;
 
                 case 'headphone':
+                    $this->SetValueBoolean('AudioMute', $target['mute']);
                     $this->SetValueInteger('HeadphoneVolume', $target['volume']);
+                    $response[$target['target']] = ['mute' => $target['mute']];
                     $response[$target['target']] = ['volume' => $target['volume']];
                     break;
 
@@ -442,6 +509,10 @@ class SonyTV extends IPSModule
                 $PowerStatus = 0;
             } else {
                 $json_a = json_decode($ret, true);
+
+                if (isset($json_a['error'])) {
+                    return false;
+                }
 
                 if (!isset($json_a['result'])) {
                     trigger_error('Unexpected return: '.$ret);
@@ -728,8 +799,9 @@ class SonyTV extends IPSModule
         $Cookie = [];
         foreach ($headers as $SetCookie) {
             if (stripos($SetCookie, 'Set-Cookie:') !== false) {
-                // Beispiel:
+                // Beispiele:
                 // Set-Cookie: auth=246554AA89E869DCD1FFC5F8C726AF5803F3AC6A; Path=/sony/; Max-Age=1209600; Expires=Do., 26 Apr. 2018 14:31:14 GMT+00:00
+                // Set-Cookie: auth=5c62b5874a067cecc1561803d08d5090c9a8724b8e1413a3aedc06c289326cad; path=/sony/; max-age=1209600; expires=Sat, 05-May-2018 09:45:38 GMT;
                 $arr = $this->GetCookieElements(substr($SetCookie, strlen('Set-Cookie: ')));
                 $Cookie['auth'] = $arr['auth'];
                 $Cookie['ExpirationDate'] = time() + $arr['max-age'];
@@ -749,10 +821,24 @@ class SonyTV extends IPSModule
         $elements = explode(';', $SetCookie);
         foreach ($elements as $element) {
             $expl = explode('=', $element);
-            $ret[trim(strtolower($expl[0]))] = $expl[1];
+            if (count($expl) == 2) {
+                $ret[trim(strtolower($expl[0]))] = $expl[1];
+            }
         }
 
         return $ret;
+    }
+
+    private function SetValueBoolean($Ident, $Value)
+    {
+        $ID = $this->GetIDForIdent($Ident);
+        if (GetValueBoolean($ID) != $Value) {
+            SetValueBoolean($ID, $Value);
+
+            return true;
+        }
+
+        return false;
     }
 
     private function SetValueInteger($Ident, $Value)
@@ -872,18 +958,27 @@ class SonyTV extends IPSModule
             $this->WriteApplicationListProfile('[]');
         }
 
+        if (!IPS_VariableProfileExists('STV.Volume')) {
+            $this->CreateProfileInteger(
+                'STV.Volume', 'Intensity', '', ' %', 0, 100, 1, 1);
+        }
+
         $this->RegisterVariableInteger('PowerStatus', 'Status', 'STV.PowerStatus', 10);
-        $this->RegisterVariableInteger('SpeakerVolume', 'Lautstärke Lautsprecher', '', 20);
-        $this->RegisterVariableInteger('HeadphoneVolume', 'Lautstärke Kopfhörer', '', 30);
-        $this->RegisterVariableInteger('SendRemoteKey', 'Sende FB Taste', 'STV.RemoteKey', 40);
-        $this->RegisterVariableInteger('InputSource', 'Eingangsquelle', 'STV.Sources', 50);
-        $this->RegisterVariableInteger('Application', 'Starte Applikation', 'STV.Applications', 50);
+        $this->RegisterVariableBoolean('AudioMute', 'Mute', '~Switch', 20);
+        $this->RegisterVariableInteger('SpeakerVolume', 'Lautstärke Lautsprecher', 'STV.Volume', 30);
+        $this->RegisterVariableInteger('HeadphoneVolume', 'Lautstärke Kopfhörer', 'STV.Volume', 40);
+        $this->RegisterVariableInteger('SendRemoteKey', 'Sende FB Taste', 'STV.RemoteKey', 50);
+        $this->RegisterVariableInteger('InputSource', 'Eingangsquelle', 'STV.Sources', 60);
+        $this->RegisterVariableInteger('Application', 'Starte Applikation', 'STV.Applications', 70);
 
         // Aktivieren der Statusvariablen
         $this->EnableAction('PowerStatus');
+        $this->EnableAction('AudioMute');
         $this->EnableAction('SendRemoteKey');
         $this->EnableAction('InputSource');
         $this->EnableAction('Application');
+        $this->EnableAction('SpeakerVolume');
+        $this->EnableAction('HeadphoneVolume');
     }
 
     private function SetInstanceStatus()
