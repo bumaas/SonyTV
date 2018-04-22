@@ -105,6 +105,8 @@ Setzt die Laustärke des Kopfhörerausgangs
 
 Parameter $Volume: Lautstärke von 0 .. 100
 
+Anmerkung: wird vom KD-65X8505B nicht unterstützt ('40800 - target not supported')
+
 ```php
 STV_SendRemoteKey(int $InstanceID, string $Value)
 ```

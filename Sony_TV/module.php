@@ -58,7 +58,7 @@ class SonyTV extends IPSModule
 
             case 'SendRemoteKey':
                 if ($Value >= 0) {
-                    SetValue($Ident, $Value);
+                    $this->SetValue($Ident, $Value);
                     $this->SendRemoteKey(GetValueFormatted($this->GetIDForIdent($Ident)));
                 }
                 break;
