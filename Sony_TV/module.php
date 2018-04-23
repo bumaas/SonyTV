@@ -20,7 +20,7 @@ class SonyTV extends IPSModule
 
     const MAX_PROFILE_ASSOCIATIONS = 128;
 
-    const VERSION = '0.8.2';
+    const VERSION = '1.0.0';
 
     // Überschreibt die interne IPS_Create($id) Funktion
     public function Create()

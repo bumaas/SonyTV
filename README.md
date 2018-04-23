@@ -17,7 +17,7 @@ Dieses Modul ermöglicht die Kommunikation mit einem Sony TV.
 
 Mit dem Modul lassen sich Befehle an einen Sony TV absenden und die Statusrückmeldung in IP-Symcon empfangen.
 
-Es werden zur Zeit Funktionen zum Ein-/Ausschalten, zum Senden der Fernbedienungsfunktionen und zum Starten der Apps unterstützt.
+Es werden zur Zeit Funktionen zum Ein-/Ausschalten, zur Lautstärkeregelung, zum Senden der Fernbedienungsfunktionen und zum Starten der Apps unterstützt.
 
 
 #### Status Rückmeldungen:  
