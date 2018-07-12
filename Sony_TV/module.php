@@ -1,5 +1,22 @@
 <?php
 
+/*
+    hier ein paar Links, die als Grundlage dienten
+
+API Beschreibung: https://developer.sony.com/develop/audio-control-api/hardware-overview/api-references
+
+Return Werte: https://developer.sony.com/develop/audio-control-api/hardware-overview/error-codes
+
+https://community.openhab.org/t/sony-devices-binding/14052/263
+
+https://github.com/gerard33/sony-bravia/blob/master/bravia.py (no longer maintained)
+
+https://github.com/aparraga/braviarc/blob/master/braviarc/braviarc.py
+
+https://github.com/waynehaffenden/bravia
+
+ */
+
 declare(strict_types=1);
 
 class IPSVarType extends stdClass
@@ -231,6 +248,11 @@ class SonyTV extends IPSModule
             if (isset($json_a['result'])) {
                 //Neuen Wert in die Statusvariable schreiben
                 if ($Status) {
+                    //manchmal wird der Bildschirm nicht eingeschaltet, daher sicherheitshalber noch ein TvPower hinterherschicken, sofern unterstützt
+                    $RemoteCommandNames = array_column(json_decode($this->ReadPropertyString('RemoteControllerInfo'), true), 'name');
+                    if (in_array('TvPower', $RemoteCommandNames)) {
+                        $this->SendRemoteKey('TvPower');
+                    }
                     $PowerStatus = 2;
                 } else {
                     $PowerStatus = 1;
@@ -240,7 +262,7 @@ class SonyTV extends IPSModule
                 $PowerStatus = 0;
             }
         }
-        SetValue($this->GetIDForIdent('PowerStatus'), $PowerStatus);
+        $this->SetValue('PowerStatus', $PowerStatus);
     }
 
     public function SetInputSource(string $source)
@@ -499,7 +521,7 @@ class SonyTV extends IPSModule
 
     private function GetPowerStatus()
     {
-        $IP = (string) $this->ReadPropertyString('Host');
+        $IP = $this->ReadPropertyString('Host');
         if (@Sys_Ping($IP, 2000) === false) {
             $PowerStatus = 0;
         } else {
@@ -656,6 +678,8 @@ class SonyTV extends IPSModule
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         }
         curl_setopt($ch, CURLOPT_HEADER, $returnHeader); //Header im Output?
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
         $ausgabe = curl_exec($ch);
         curl_close($ch);
         parent::SendDebug('received:', $ausgabe, 0);
@@ -831,9 +855,8 @@ class SonyTV extends IPSModule
 
     private function SetValueBoolean($Ident, $Value)
     {
-        $ID = $this->GetIDForIdent($Ident);
-        if (GetValueBoolean($ID) != $Value) {
-            SetValueBoolean($ID, $Value);
+        if ($this->GetValue($Ident) != $Value) {
+            $this->SetValue($Ident, $Value);
 
             return true;
         }
@@ -983,12 +1006,8 @@ class SonyTV extends IPSModule
 
     private function SetInstanceStatus()
     {
-        if (IPS_GetKernelRunlevel() != KR_READY) { //Kernel ready
-            return;
-        }
-
         //IP Prüfen
-        $ip = (string) $this->ReadPropertyString('Host');
+        $ip = $this->ReadPropertyString('Host');
         if (filter_var($ip, FILTER_VALIDATE_IP)) {
             if ($ip == '') {
                 $this->SetStatus(self::STATUS_INST_IP_IS_EMPTY);

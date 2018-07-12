@@ -125,7 +125,7 @@ Auf eine Eingabe Quelle schalten.
 
 Die Keys sind je Gerät unterschiedlich und werden automatisch bei der Anmeldung ausgelesen.
 
-Die möglichen Eingabequellen können dem Profil _*STV.InputSource*_ entnommen werden.
+Die möglichen Eingabequellen können dem Profil _*STV.Sources*_ entnommen werden.
 
 ```php
 STV_StartApplication(int $InstanceID, string $application)
@@ -134,7 +134,7 @@ Eine Applikation starten.
 
 Die Applikationen sind je Gerät unterschiedlich und werden automatisch bei der Anmeldung ausgelesen.
 
-Die möglichen Applikationen können dem Profil _*STV.InputSource*_ entnommen werden.
+Die möglichen Applikationen können dem Profil _*STV.Applications*_ entnommen werden.
 
 
 ```php
