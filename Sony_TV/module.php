@@ -17,12 +17,13 @@ https://github.com/waynehaffenden/bravia
 
  */
 
-declare(strict_types=1);
+declare(strict_types = 1);
 
 class IPSVarType extends stdClass
 {
+
     //  API VariableTypes
-    const vtNone = -1;
+    const vtNone = - 1;
     const vtBoolean = 0;
     const vtInteger = 1;
     const vtFloat = 2;
@@ -32,6 +33,7 @@ class IPSVarType extends stdClass
 // Klassendefinition
 class SonyTV extends IPSModule
 {
+
     const STATUS_INST_IP_IS_EMPTY = 202;
     const STATUS_INST_IP_IS_INVALID = 204; //IP Adresse ist ungültig
 
@@ -47,8 +49,8 @@ class SonyTV extends IPSModule
 
         $this->RegisterProperties();
 
-        $this->RegisterTimer('Update', 0, 'STV_UpdateAll('.$this->InstanceID.');');
-        IPS_LogMessage(get_class().'::'.__FUNCTION__, 'TimerIntervall set to 0 s.');
+        $this->RegisterTimer('Update', 0, 'STV_UpdateAll(' . $this->InstanceID . ');');
+        IPS_LogMessage(get_class() . '::' . __FUNCTION__, 'TimerIntervall set to 0 s.');
     }
 
     public function ApplyChanges()
@@ -58,7 +60,7 @@ class SonyTV extends IPSModule
 
         $TimerInterval = $this->ReadPropertyInteger('UpdateInterval');
         $this->SetTimerInterval('Update', $TimerInterval * 1000);
-        IPS_LogMessage(get_class().'::'.__FUNCTION__, 'TimerIntervall set to '.$TimerInterval.' s.');
+        IPS_LogMessage(get_class() . '::' . __FUNCTION__, 'TimerIntervall set to ' . $TimerInterval . ' s.');
 
         $this->RegisterVariables();
 
@@ -112,7 +114,7 @@ class SonyTV extends IPSModule
                 break;
 
             default:
-                trigger_error('Unexpected ident: '.$Ident);
+                trigger_error('Unexpected ident: ' . $Ident);
         }
     }
 
@@ -125,7 +127,7 @@ class SonyTV extends IPSModule
         // use only A-Z a-z 0-9 for device. Probably. Havent checked.
         // Start anlernen
 
-        $ret = $this->callPostRequest('accessControl', 'actRegister', json_encode($this->GetAuthorizationParams()), [], false, '1.0');
+        $ret = $this->callPostRequest('accessControl', 'actRegister', $this->GetAuthorizationParams(), [], false, '1.0', true);
 
         if ($ret === false) {
             return false;
@@ -142,7 +144,7 @@ class SonyTV extends IPSModule
                     return true;
                     break;
                 default:
-                    trigger_error('Unexpected error: '.$ret);
+                    trigger_error('Unexpected error: ' . $ret);
 
                     return false;
                     break;
@@ -164,11 +166,11 @@ class SonyTV extends IPSModule
         }
 
         // Key senden
-        $tv_auth_header = 'Authorization: Basic '.base64_encode(':'.$TVCode);
-        $headers = [];
-        $headers[] = $tv_auth_header;
+        $tv_auth_header = 'Authorization: Basic ' . base64_encode(':' . $TVCode);
+        $headers        = [];
+        $headers[]      = $tv_auth_header;
 
-        $ret = $this->callPostRequest('accessControl', 'actRegister', json_encode($this->GetAuthorizationParams()), $headers, true, '1.0');
+        $ret = $this->callPostRequest('accessControl', 'actRegister', $this->GetAuthorizationParams(), $headers, true, '1.0');
 
         if ($ret === false) {
             return false;
@@ -197,11 +199,11 @@ class SonyTV extends IPSModule
         return true;
     }
 
-    public function UpdateAll():bool
+    public function UpdateAll(): bool
     {
         // IP-Symcon Kernel ready?
         if (IPS_GetKernelRunlevel() != KR_READY) { //Kernel ready
-            IPS_LogMessage(get_class().'::'.__FUNCTION__, 'Kernel is not ready ('.IPS_GetKernelRunlevel().')');
+            IPS_LogMessage(get_class() . '::' . __FUNCTION__, 'Kernel is not ready (' . IPS_GetKernelRunlevel() . ')');
 
             return false;
         }
@@ -223,15 +225,15 @@ class SonyTV extends IPSModule
                     $this->UpdateCookie();
                     break;
                 default:
-                    trigger_error('Unexpected PowerStatus: '.$PowerStatus);
+                    trigger_error('Unexpected PowerStatus: ' . $PowerStatus);
             }
 
             return $PowerStatus > 0;
-        /*                $this->GetSystemInfos();
-                        $this->GetEPGInfos();
-                        $this->GetTimerliste();
-                        $this->GetSenderliste();
-        */
+            /*                $this->GetSystemInfos();
+                            $this->GetEPGInfos();
+                            $this->GetTimerliste();
+                            $this->GetSenderliste();
+            */
         } else {
             return false;
         }
@@ -239,7 +241,7 @@ class SonyTV extends IPSModule
 
     public function SetPowerStatus(bool $Status)
     {
-        $ret = $this->callPostRequest('system', 'setPowerStatus', json_encode([['status' => $Status]]), [], false, '1.0');
+        $ret = $this->callPostRequest('system', 'setPowerStatus', [['status' => $Status]], [], false, '1.0');
 
         if ($ret === false) {
             $PowerStatus = 0;
@@ -258,7 +260,7 @@ class SonyTV extends IPSModule
                     $PowerStatus = 1;
                 }
             } else {
-                trigger_error('Error: '.json_encode($json_a['error']));
+                trigger_error('Error: ' . json_encode($json_a['error']));
                 $PowerStatus = 0;
             }
         }
@@ -271,12 +273,17 @@ class SonyTV extends IPSModule
 
         $uri = $this->GetUriOfSource($Sources, $source);
 
-        $response = $this->callPostRequest('avContent', 'setPlayContent', json_encode([['uri' => $uri]]), [], false, '1.0');
+        $response = $this->callPostRequest('avContent', 'setPlayContent', [['uri' => $uri]], [], false, '1.0');
+
+        if ($response === false) {
+
+            return false;
+        }
 
         $json_a = json_decode($response, true);
 
-        if (!$response || !isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+        if (!isset($json_a['result'])) {
+            trigger_error('Unexpected return: ' . $response);
 
             return false;
         }
@@ -286,12 +293,17 @@ class SonyTV extends IPSModule
 
     public function SetAudioMute(bool $status)
     {
-        $response = $this->callPostRequest('audio', 'setAudioMute', json_encode([['status' => $status]]), [], false, '1.0');
+        $response = $this->callPostRequest('audio', 'setAudioMute', [['status' => $status]], [], false, '1.0');
+
+        if ($response === false) {
+
+            return false;
+        }
 
         $json_a = json_decode($response, true);
 
-        if (!$response || !isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+        if (!isset($json_a['result'])) {
+            trigger_error('Unexpected return: ' . $response);
 
             return false;
         }
@@ -303,12 +315,17 @@ class SonyTV extends IPSModule
 
     public function SetSpeakerVolume(int $volume)
     {
-        $response = $this->callPostRequest('audio', 'setAudioVolume', json_encode([['target' => 'speaker', 'volume' => (string) $volume]]), [], false, '1.0');
+        $response = $this->callPostRequest('audio', 'setAudioVolume', [['target' => 'speaker', 'volume' => (string) $volume]], [], false, '1.0');
+
+        if ($response === false) {
+
+            return false;
+        }
 
         $json_a = json_decode($response, true);
 
-        if (!$response || !isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+        if (!isset($json_a['result'])) {
+            trigger_error('Unexpected return: ' . $response);
 
             return false;
         }
@@ -320,12 +337,19 @@ class SonyTV extends IPSModule
 
     public function SetHeadphoneVolume(int $volume)
     {
-        $response = $this->callPostRequest('audio', 'setAudioVolume', json_encode([['target' => 'headphone', 'volume' => (string) $volume]]), [], false, '1.0');
+        $response = $this->callPostRequest(
+            'audio', 'setAudioVolume', [['target' => 'headphone', 'volume' => (string) $volume]], [], false, '1.0'
+        );
+
+        if ($response === false) {
+
+            return false;
+        }
 
         $json_a = json_decode($response, true);
 
-        if (!$response || !isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+        if (!isset($json_a['result'])) {
+            trigger_error('Unexpected return: ' . $response);
 
             return false;
         }
@@ -341,12 +365,17 @@ class SonyTV extends IPSModule
 
         $uri = $this->GetUriOfSource($Applications['result'][0], $application);
 
-        $response = $this->callPostRequest('appControl', 'setActiveApp', json_encode([['uri' => $uri]]), [], false, '1.0');
+        $response = $this->callPostRequest('appControl', 'setActiveApp', [['uri' => $uri]], [], false, '1.0');
+
+        if ($response === false) {
+
+            return false;
+        }
 
         $json_a = json_decode($response, true);
 
-        if (!$response || !isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+        if (!isset($json_a['result'])) {
+            trigger_error('Unexpected return: ' . $response);
 
             return false;
         }
@@ -354,7 +383,7 @@ class SonyTV extends IPSModule
         return true;
     }
 
-    public function SendRemoteKey(string $Value):bool
+    public function SendRemoteKey(string $Value): bool
     {
         $RemoteControllerInfo = json_decode($this->ReadPropertyString('RemoteControllerInfo'), true);
 
@@ -363,24 +392,24 @@ class SonyTV extends IPSModule
             trigger_error('Invalid RemoteKey');
         }
 
-        $tv_ip = $this->ReadPropertyString('Host');
+        $tv_ip  = $this->ReadPropertyString('Host');
         $cookie = json_decode($this->ReadPropertyString('Cookie'), true)['auth'];
 
         $data = '<?xml version="1.0"?>';
         $data .= '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">';
         $data .= '   <s:Body>';
         $data .= '      <u:X_SendIRCC xmlns:u="urn:schemas-sony-com:service:IRCC:1">';
-        $data .= '         <IRCCCode>'.$IRCCCode.'</IRCCCode>';
+        $data .= '         <IRCCCode>' . $IRCCCode . '</IRCCCode>';
         $data .= '      </u:X_SendIRCC>';
         $data .= '   </s:Body>';
         $data .= '</s:Envelope>';
 
         $headers = [];
         if ($cookie != '') {
-            $headers[] = 'Cookie: auth='.$cookie;
+            $headers[] = 'Cookie: auth=' . $cookie;
         }
         $headers[] = 'Content-Type: text/xml; charset=UTF-8';
-        $headers[] = 'Content-Length: '.strlen($data);
+        $headers[] = 'Content-Length: ' . strlen($data);
         $headers[] = 'SOAPAction: "urn:schemas-sony-com:service:IRCC:1#X_SendIRCC"';
 
         $ret = $this->SendCurlPost($tv_ip, 'IRCC', $headers, $data, true);
@@ -394,12 +423,12 @@ class SonyTV extends IPSModule
 
     public function WriteAPIInformationToFile(string $filename = '')
     {
-        $response = $this->callPostRequest('system', 'getSystemInformation', json_encode([]), [], false, '1.0');
+        $response = $this->callPostRequest('system', 'getSystemInformation', [], [], false, '1.0');
         if ($filename == '') {
-            $filename = IPS_GetLogDir().'Sony '.json_decode($response, true)['result'][0]['model'].'.txt';
+            $filename = IPS_GetLogDir() . 'Sony ' . json_decode($response, true)['result'][0]['model'] . '.txt';
         }
 
-        $return = PHP_EOL.'SystemInformation: '.$response.PHP_EOL.PHP_EOL;
+        $return = PHP_EOL . 'SystemInformation: ' . $response . PHP_EOL . PHP_EOL;
 
         $response = $this->callPostRequest('guide', 'getServiceProtocols', json_encode([]), [], false, '1.0');
 
@@ -410,14 +439,14 @@ class SonyTV extends IPSModule
             }
         }
 
-        IPS_LogMessage(get_class().'::'.__FUNCTION__, 'Writing API Information to \''.$filename.'\'');
+        IPS_LogMessage(get_class() . '::' . __FUNCTION__, 'Writing API Information to \'' . $filename . '\'');
 
         return file_put_contents($filename, $return) > 0;
     }
 
     public function UpdateApplicationList()
     {
-        $response = $this->callPostRequest('appControl', 'getApplicationList', json_encode([]), [], false, '1.0');
+        $response = $this->callPostRequest('appControl', 'getApplicationList', [], [], false, '1.0');
 
         if ($response === false) {
             return false;
@@ -426,7 +455,7 @@ class SonyTV extends IPSModule
         $json_a = json_decode($response, true);
 
         if (!isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+            trigger_error('Unexpected return: ' . $response);
 
             return false;
         }
@@ -450,43 +479,48 @@ class SonyTV extends IPSModule
             return false;
         }
 
-        $response = $this->callPostRequest('audio', 'getVolumeInformation', json_encode([]), [], false, '1.0');
+        $response = $this->callPostRequest('audio', 'getVolumeInformation', [], [], false, '1.0');
 
-        $json_a = json_decode($response, true);
-
-        if (!$response || !isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+        if ($response === false) {
 
             return false;
         }
 
-        $response = [];
+        $json_a = json_decode($response, true);
+
+        if (!isset($json_a['result'])) {
+            trigger_error('Unexpected return: ' . $response);
+
+            return false;
+        }
+
+        $return = [];
 
         foreach ($json_a['result'][0] as $target) {
             switch ($target['target']) {
                 case 'speaker':
                     $this->SetValueBoolean('AudioMute', $target['mute']);
                     $this->SetValueInteger('SpeakerVolume', $target['volume']);
-                    $response[$target['target']] = ['mute' => $target['mute']];
-                    $response[$target['target']] = ['volume' => $target['volume']];
+                    $return[$target['target']] = ['mute' => $target['mute']];
+                    $return[$target['target']] = ['volume' => $target['volume']];
                     break;
 
                 case 'headphone':
                     $this->SetValueBoolean('AudioMute', $target['mute']);
                     $this->SetValueInteger('HeadphoneVolume', $target['volume']);
-                    $response[$target['target']] = ['mute' => $target['mute']];
-                    $response[$target['target']] = ['volume' => $target['volume']];
+                    $return[$target['target']] = ['mute' => $target['mute']];
+                    $return[$target['target']] = ['volume' => $target['volume']];
                     break;
 
                 default:
-                    trigger_error('Unerwarteter Target: '.$target['target']);
+                    trigger_error('Unerwarteter Target: ' . $target['target']);
 
                     break;
 
             }
         }
 
-        return $response;
+        return $return;
     }
 
     private function GetInputSource()
@@ -495,22 +529,22 @@ class SonyTV extends IPSModule
             return false;
         }
 
-        $response = $this->callPostRequest('avContent', 'getPlayingContentInfo', json_encode([]), [], false, '1.0');
+        $response = $this->callPostRequest('avContent', 'getPlayingContentInfo', [], [], false, '1.0');
 
-        $json_a = json_decode($response, true);
-
-        if (!$response || isset($json_a['error'])) {
+        if (!$response || isset(json_decode($response, true)['error'])) {
             // z.B. {'error':[7, 'Illegal State'}
-            $this->SetValueInteger('InputSource', -1);
+            $this->SetValueInteger('InputSource', - 1);
 
             return false;
         }
 
         $Sources = json_decode($this->ReadPropertyString('SourceList'), true);
-        foreach ($Sources as $key=> $source) {
+        $json_a  = json_decode($response, true);
+
+        foreach ($Sources as $key => $source) {
             if ($source['uri'] == $json_a['result'][0]['uri']) {
                 $this->SetValueInteger('InputSource', $key);
-                $this->SetValueInteger('Application', -1);
+                $this->SetValueInteger('Application', - 1);
 
                 return $source['title'];
             }
@@ -525,7 +559,7 @@ class SonyTV extends IPSModule
         if (@Sys_Ping($IP, 2000) === false) {
             $PowerStatus = 0;
         } else {
-            $ret = $this->callPostRequest('system', 'getPowerStatus', json_encode([]), [], false, '1.0');
+            $ret = $this->callPostRequest('system', 'getPowerStatus', [], [], false, '1.0');
 
             if ($ret === false) {
                 $PowerStatus = 0;
@@ -537,7 +571,7 @@ class SonyTV extends IPSModule
                 }
 
                 if (!isset($json_a['result'])) {
-                    trigger_error('Unexpected return: '.$ret);
+                    trigger_error('Unexpected return: ' . $ret);
 
                     return false;
                 }
@@ -551,7 +585,7 @@ class SonyTV extends IPSModule
                         break;
                     default:
                         $PowerStatus = 0;
-                        trigger_error('Unexpected status: '.$json_a['result'][0]['status']);
+                        trigger_error('Unexpected status: ' . $json_a['result'][0]['status']);
                 }
             }
         }
@@ -570,7 +604,7 @@ class SonyTV extends IPSModule
     {
         $cookie = json_decode($this->ReadPropertyString('Cookie'), true);
         if ($cookie['ExpirationDate'] < time() - (24 * 60 * 60)) {
-            $ret = $this->callPostRequest('accessControl', 'actRegister', json_encode($this->GetAuthorizationParams()), [], true, '1.0');
+            $ret = $this->callPostRequest('accessControl', 'actRegister', $this->GetAuthorizationParams(), [], true, '1.0');
 
             if ($ret === false) {
                 return false;
@@ -611,8 +645,8 @@ class SonyTV extends IPSModule
 
     private function ListAPIInfoOfService($servicename, &$return)
     {
-        $return .= 'Service: '.$servicename.PHP_EOL;
-        $response = $this->callPostRequest($servicename, 'getMethodTypes', json_encode(['']), [], false, '1.0');
+        $return   .= 'Service: ' . $servicename . PHP_EOL;
+        $response = $this->callPostRequest($servicename, 'getMethodTypes', [''], [], false, '1.0');
         if ($response) {
             $arr = json_decode($response, true);
             if (isset($arr['result'])) {
@@ -627,12 +661,12 @@ class SonyTV extends IPSModule
                     $params = $this->ListParams($api[1]);
 
                     if (count($api[2]) > 0) {
-                        $returns = ': '.$api[2][0];
+                        $returns = ': ' . $api[2][0];
                     } else {
                         $returns = '';
                     }
 
-                    $return .= '   '.$api[0].'('.$params.')'.$returns.' - Version: '.$api[3].PHP_EOL;
+                    $return .= '   ' . $api[0] . '(' . $params . ')' . $returns . ' - Version: ' . $api[3] . PHP_EOL;
                 }
             }
             $return .= PHP_EOL;
@@ -646,33 +680,39 @@ class SonyTV extends IPSModule
             if ($key == 0) {
                 $params .= $elem;
             } else {
-                $params .= ', '.$elem.', ';
+                $params .= ', ' . $elem . ', ';
             }
         }
 
         return $params;
     }
 
-    private function callPostRequest($service, $cmd, $params, $headers, $returnHeader, $version)
+    private function callPostRequest($service, $cmd, $params, $headers, $returnHeader, $version, $ignoreError401 = false)
     {
-        $tv_ip = $this->ReadPropertyString('Host');
+        $tv_ip  = $this->ReadPropertyString('Host');
         $cookie = json_decode($this->ReadPropertyString('Cookie'), true)['auth'];
 
         if ($cookie != '') {
-            $headers[] = 'Cookie: auth='.$cookie;
+            $headers[] = 'Cookie: auth=' . $cookie;
         }
 
-        $data = '{"method":"'.$cmd.'","params":'.$params.',"id":'.$this->InstanceID.', "version":"'.$version.'"}';
+        $data = json_encode(
+            [
+                "method"  => $cmd,
+                "params"  => $params,
+                "id"      => $this->InstanceID,
+                "version" => $version]
+        );
 
-        return $this->SendCurlPost($tv_ip, $service, $headers, $data, $returnHeader);
+        return $this->SendCurlPost($tv_ip, $service, $headers, $data, $returnHeader, $ignoreError401);
     }
 
-    private function SendCurlPost($tvip, $service, $headers, $data, $returnHeader)
+    private function SendCurlPost($tvip, $service, $headers, $data_json, $returnHeader, $ignoreError401 = false)
     {
-        parent::SendDebug('send:', $data, 0);
-        $ch = curl_init('http://'.$tvip.'/sony/'.$service);
+        parent::SendDebug('send:', $data_json, 0);
+        $ch = curl_init('http://' . $tvip . '/sony/' . $service);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data_json);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         if (count($headers)) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -680,16 +720,34 @@ class SonyTV extends IPSModule
         curl_setopt($ch, CURLOPT_HEADER, $returnHeader); //Header im Output?
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
         curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $ausgabe = curl_exec($ch);
+        $response   = curl_exec($ch);
+        $curl_errno = curl_errno($ch);
         curl_close($ch);
-        parent::SendDebug('received:', $ausgabe, 0);
+        parent::SendDebug('received:', $response, 0);
 
-        return $ausgabe;
+        if ($curl_errno) {
+            IPS_LogMessage(__CLASS__, 'Curl call returned with \'' . $curl_errno . '\'');
+
+            return false;
+        }
+
+        $json_a = json_decode($response, true);
+
+        if (isset($json_a['error'])) {
+            if (!($json_a['error'][0] == 401 && $ignoreError401)) {
+                IPS_LogMessage(__CLASS__, 'TV replied with error \'' . implode(', ', $json_a['error']) . '\'');
+
+                return false;
+            }
+        }
+
+
+        return $response;
     }
 
     private function GetSourceListInfo()
     {
-        $response = $this->callPostRequest('avContent', 'getSourceList', json_encode([['scheme' =>'extInput']]), [], false, '1.0');
+        $response = $this->callPostRequest('avContent', 'getSourceList', [['scheme' => 'extInput']], [], false, '1.0');
 
         if ($response === false) {
             return false;
@@ -698,7 +756,7 @@ class SonyTV extends IPSModule
         $json_a = json_decode($response, true);
 
         if (!isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+            trigger_error('Unexpected return: ' . $response);
 
             return false;
         }
@@ -706,14 +764,17 @@ class SonyTV extends IPSModule
         $SourceList = [];
         foreach ($json_a['result'][0] as $result) {
             if (in_array($result['source'], ['extInput:hdmi', 'extInput:composite', 'extInput:component'])) {//physical inputs
-                $response = $this->callPostRequest('avContent', 'getContentList', json_encode([$result]), [], false, '1.0');
+                $response = $this->callPostRequest('avContent', 'getContentList', [$result], [], false, '1.0');
+
                 if ($response === false) {
+
                     return false;
                 }
+
                 $json_a = json_decode($response, true);
 
                 if (!isset($json_a['result'])) {
-                    trigger_error('Unexpected return: '.$response);
+                    trigger_error('Unexpected return: ' . $response);
 
                     return false;
                 }
@@ -734,7 +795,7 @@ class SonyTV extends IPSModule
 
     private function GetRemoteControllerInfo()
     {
-        $response = $this->callPostRequest('system', 'getRemoteControllerInfo', json_encode([]), [], false, '1.0');
+        $response = $this->callPostRequest('system', 'getRemoteControllerInfo', [], [], false, '1.0');
 
         if (!$response) {
             trigger_error('callPostRequest failed!');
@@ -747,7 +808,7 @@ class SonyTV extends IPSModule
         $json_a = json_decode($response, true);
 
         if (!isset($json_a['result'])) {
-            trigger_error('Unexpected return: '.$response);
+            trigger_error('Unexpected return: ' . $response);
 
             return false;
         }
@@ -765,9 +826,9 @@ class SonyTV extends IPSModule
     {
         $sources = json_decode($SourceList, true);
 
-        $ass[] = [-1, '-',  '', -1];
+        $ass[] = [- 1, '-', '', - 1];
         foreach ($sources as $key => $source) {
-            $ass[] = [$key, $source['title'],  '', -1];
+            $ass[] = [$key, $source['title'], '', - 1];
         }
 
         $this->CreateProfileIntegerAss('STV.Sources', '', '', '', 0, 0, $ass);
@@ -775,18 +836,18 @@ class SonyTV extends IPSModule
 
     private function WriteApplicationListProfile(String $ApplicationList)
     {
-        $ProfileName = 'STV.Applications';
+        $ProfileName  = 'STV.Applications';
         $Applications = json_decode($ApplicationList, true);
 
-        $ass[] = [-1, '-',  '', -1];
+        $ass[] = [- 1, '-', '', - 1];
         foreach ($Applications as $key => $Application) {
-            $ass[] = [$key, html_entity_decode($Application['title']),  '', -1];
+            $ass[] = [$key, html_entity_decode($Application['title']), '', - 1];
         }
 
         if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
-            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \''.$ProfileName.'\' übernommen:'.PHP_EOL
-                .implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
-                .PHP_EOL.PHP_EOL;
+            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName
+                 . '\' übernommen:' . PHP_EOL . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
+                 . PHP_EOL . PHP_EOL;
         }
 
         $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, array_slice($ass, 0, 128));
@@ -795,17 +856,17 @@ class SonyTV extends IPSModule
     private function WriteRemoteControllerInfoProfile(String $RemoteControllerInfo)
     {
         $ProfileName = 'STV.RemoteKey';
-        $codes = json_decode($RemoteControllerInfo, true);
+        $codes       = json_decode($RemoteControllerInfo, true);
 
-        $ass[] = [-1, '-',  '', -1];
+        $ass[] = [- 1, '-', '', - 1];
         foreach ($codes as $key => $code) {
-            $ass[] = [$key, $code['name'],  '', -1];
+            $ass[] = [$key, $code['name'], '', - 1];
         }
 
         if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
-            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \''.$ProfileName.'\' übernommen:'.PHP_EOL
-                .implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
-                .PHP_EOL.PHP_EOL;
+            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName
+                 . '\' übernommen:' . PHP_EOL . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
+                 . PHP_EOL . PHP_EOL;
         }
 
         $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, $ass);
@@ -817,7 +878,7 @@ class SonyTV extends IPSModule
         list($headers) = explode("\r\n\r\n", $return, 2);
         $headers = explode("\n", $headers);
         if (count($headers) == 0) {
-            trigger_error('Unerwarteter Header: '.$return);
+            trigger_error('Unerwarteter Header: ' . $return);
         }
 
         $Cookie = [];
@@ -826,8 +887,8 @@ class SonyTV extends IPSModule
                 // Beispiele:
                 // Set-Cookie: auth=246554AA89E869DCD1FFC5F8C726AF5803F3AC6A; Path=/sony/; Max-Age=1209600; Expires=Do., 26 Apr. 2018 14:31:14 GMT+00:00
                 // Set-Cookie: auth=5c62b5874a067cecc1561803d08d5090c9a8724b8e1413a3aedc06c289326cad; path=/sony/; max-age=1209600; expires=Sat, 05-May-2018 09:45:38 GMT;
-                $arr = $this->GetCookieElements(substr($SetCookie, strlen('Set-Cookie: ')));
-                $Cookie['auth'] = $arr['auth'];
+                $arr                      = $this->GetCookieElements(substr($SetCookie, strlen('Set-Cookie: ')));
+                $Cookie['auth']           = $arr['auth'];
                 $Cookie['ExpirationDate'] = time() + $arr['max-age'];
                 IPS_SetProperty($this->InstanceID, 'Cookie', json_encode($Cookie));
                 IPS_ApplyChanges($this->InstanceID);
@@ -841,7 +902,7 @@ class SonyTV extends IPSModule
 
     private function GetCookieElements($SetCookie)
     {
-        $ret = [];
+        $ret      = [];
         $elements = explode(';', $SetCookie);
         foreach ($elements as $element) {
             $expl = explode('=', $element);
@@ -879,22 +940,27 @@ class SonyTV extends IPSModule
     private function GetAuthorizationParams()
     {
         $Nickname = $this->ReadPropertyString('Nickname');
-        $uuid = $this->ReadPropertyString('UUID');
+        $uuid     = $this->ReadPropertyString('UUID');
 
-        return  [['clientid'    => $uuid,
-                     'nickname' => $Nickname,
-                     'level'    => 'private',
-        ],
-            [['function' => 'WOL',
-               'value'   => 'yes', ],
-            ], ];
+        return [
+            [
+                'clientid' => $uuid,
+                'nickname' => $Nickname,
+                'level'    => 'private',],
+            [
+                [
+                    'function' => 'WOL',
+                    'value'    => 'yes',],],];
     }
 
     private function CheckProfileType($ProfileName, $VarType)
     {
         $profile = IPS_GetVariableProfile($ProfileName);
         if ($profile['ProfileType'] != $VarType) {
-            trigger_error('Variable profile type does not match for already existing profile "'.$ProfileName.'". The existing profile has to be deleted manually.');
+            trigger_error(
+                'Variable profile type does not match for already existing profile "' . $ProfileName
+                . '". The existing profile has to be deleted manually.'
+            );
         }
     }
 
@@ -904,7 +970,7 @@ class SonyTV extends IPSModule
             IPS_CreateVariableProfile($ProfileName, 1);
 
             $this->SendDebug('Variablenprofil angelegt: ', $ProfileName, 0);
-            IPS_LogMessage('Sony TV', 'Variablenprofil angelegt: '.$ProfileName);
+            IPS_LogMessage('Sony TV', 'Variablenprofil angelegt: ' . $ProfileName);
         } else {
             $this->CheckProfileType($ProfileName, IPSVarType::vtInteger);
         }
@@ -918,7 +984,7 @@ class SonyTV extends IPSModule
     private function CreateProfileIntegerAss($ProfileName, $Icon, $Prefix, $Suffix, $StepSize, $Digits, $Associations)
     {
         if (count($Associations) == 0) {
-            trigger_error(__FUNCTION__.': Associations of profil "'.$ProfileName.'" is empty');
+            trigger_error(__FUNCTION__ . ': Associations of profil "' . $ProfileName . '" is empty');
             IPS_LogMessage(__FUNCTION__, json_encode(debug_backtrace()));
 
             return;
@@ -932,12 +998,12 @@ class SonyTV extends IPSModule
         //zunächst werden alte Assoziationen gelöscht
         //bool IPS_SetVariableProfileAssociation ( string $ProfilName, float $Wert, string $Name, string $Icon, integer $Farbe )
         foreach (IPS_GetVariableProfile($ProfileName)['Associations'] as $Association) {
-            IPS_SetVariableProfileAssociation($ProfileName, $Association['Value'], '', '', -1);
+            IPS_SetVariableProfileAssociation($ProfileName, $Association['Value'], '', '', - 1);
         }
 
         //dann werden die aktuellen eingetragen
         foreach ($Associations as $Association) {
-            IPS_SetVariableProfileAssociation($ProfileName, $Association[0], $Association[1], '', -1);
+            IPS_SetVariableProfileAssociation($ProfileName, $Association[0], $Association[1], '', - 1);
         }
     }
 
@@ -947,7 +1013,7 @@ class SonyTV extends IPSModule
         //Properties, die im Konfigurationsformular gesetzt werden können
         $this->RegisterPropertyString('Host', '');
         $this->RegisterPropertyInteger('UpdateInterval', 10);
-        $this->RegisterPropertyString('Nickname', 'Symcon ('.gethostname().')');
+        $this->RegisterPropertyString('Nickname', 'Symcon (' . gethostname() . ')');
         $this->RegisterPropertyString('UUID', uniqid());
         $this->RegisterPropertyString('Cookie', '');
         $this->RegisterPropertyInteger('CookieExpiration', time());
@@ -962,12 +1028,10 @@ class SonyTV extends IPSModule
     {
         if (!IPS_VariableProfileExists('STV.PowerStatus')) {
             $this->CreateProfileIntegerAss(
-                'STV.PowerStatus', 'Power', '', '', 0, 0,
-                [
-                    [0, 'Ausgeschaltet', '', -1],
-                    [1, 'Standby', '', -1],
-                    [2, 'Eingeschaltet', '', -1],
-                ]
+                'STV.PowerStatus', 'Power', '', '', 0, 0, [
+                                     [0, 'Ausgeschaltet', '', - 1],
+                                     [1, 'Standby', '', - 1],
+                                     [2, 'Eingeschaltet', '', - 1],]
             );
         }
 
@@ -983,7 +1047,8 @@ class SonyTV extends IPSModule
 
         if (!IPS_VariableProfileExists('STV.Volume')) {
             $this->CreateProfileInteger(
-                'STV.Volume', 'Intensity', '', ' %', 0, 100, 1, 1);
+                'STV.Volume', 'Intensity', '', ' %', 0, 100, 1, 1
+            );
         }
 
         $this->RegisterVariableInteger('PowerStatus', 'Status', 'STV.PowerStatus', 10);
