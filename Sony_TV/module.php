@@ -50,7 +50,6 @@ class SonyTV extends IPSModule
         $this->RegisterProperties();
 
         $this->RegisterTimer('Update', 0, 'STV_UpdateAll(' . $this->InstanceID . ');');
-        IPS_LogMessage(get_class() . '::' . __FUNCTION__, 'TimerIntervall set to 0 s.');
     }
 
     public function ApplyChanges()
@@ -60,7 +59,7 @@ class SonyTV extends IPSModule
 
         $TimerInterval = $this->ReadPropertyInteger('UpdateInterval');
         $this->SetTimerInterval('Update', $TimerInterval * 1000);
-        IPS_LogMessage(get_class() . '::' . __FUNCTION__, 'TimerIntervall set to ' . $TimerInterval . ' s.');
+        $this->LogMessage('TimerIntervall set to ' . $TimerInterval . 's.', KL_NOTIFY);
 
         $this->RegisterVariables();
 
@@ -203,7 +202,7 @@ class SonyTV extends IPSModule
     {
         // IP-Symcon Kernel ready?
         if (IPS_GetKernelRunlevel() != KR_READY) { //Kernel ready
-            IPS_LogMessage(get_class() . '::' . __FUNCTION__, 'Kernel is not ready (' . IPS_GetKernelRunlevel() . ')');
+            $this->LogMessage('Kernel is not ready (' . IPS_GetKernelRunlevel() . ')', KL_NOTIFY);
 
             return false;
         }
@@ -439,7 +438,7 @@ class SonyTV extends IPSModule
             }
         }
 
-        IPS_LogMessage(get_class() . '::' . __FUNCTION__, 'Writing API Information to \'' . $filename . '\'');
+        $this->LogMessage('Writing API Information to \'' . $filename . '\'', KL_NOTIFY);
 
         return file_put_contents($filename, $return) > 0;
     }
@@ -466,6 +465,8 @@ class SonyTV extends IPSModule
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
         $this->WriteApplicationListProfile($ApplicationList);
+
+        $this->SendDebug(__FUNCTION__, 'ApplicationList: '.json_encode($response), 0);
 
         return true;
     }
@@ -539,6 +540,11 @@ class SonyTV extends IPSModule
         }
 
         $Sources = json_decode($this->ReadPropertyString('SourceList'), true);
+
+        if (!is_array($Sources)){
+            return false;
+        }
+
         $json_a  = json_decode($response, true);
 
         foreach ($Sources as $key => $source) {
@@ -726,7 +732,7 @@ class SonyTV extends IPSModule
         parent::SendDebug('received:', $response, 0);
 
         if ($curl_errno) {
-            IPS_LogMessage(__CLASS__, 'Curl call returned with \'' . $curl_errno . '\'');
+            $this->LogMessage('Curl call returned with \'' . $curl_errno . '\'', KL_ERROR);
 
             return false;
         }
@@ -735,7 +741,7 @@ class SonyTV extends IPSModule
 
         if (isset($json_a['error'])) {
             if (!($json_a['error'][0] == 401 && $ignoreError401)) {
-                IPS_LogMessage(__CLASS__, 'TV replied with error \'' . implode(', ', $json_a['error']) . '\'');
+                $this->LogMessage('TV replied with error \'' . implode(', ', $json_a['error']) . '\'', KL_ERROR);
 
                 return false;
             }
@@ -790,6 +796,8 @@ class SonyTV extends IPSModule
 
         $this->WriteSourceListProfile($response);
 
+        $this->SendDebug(__FUNCTION__, 'SourceList: '.json_encode($response), 0);
+
         return true;
     }
 
@@ -818,6 +826,8 @@ class SonyTV extends IPSModule
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
         $this->WriteRemoteControllerInfoProfile($response);
+
+        $this->SendDebug(__FUNCTION__, 'RemoteControllerInfo: '.json_encode($response), 0);
 
         return true;
     }
@@ -897,6 +907,7 @@ class SonyTV extends IPSModule
             }
         }
 
+        $this->SendDebug(__FUNCTION__, 'Cookie: '.json_encode($Cookie), 0);
         return $CookieFound;
     }
 
@@ -970,7 +981,7 @@ class SonyTV extends IPSModule
             IPS_CreateVariableProfile($ProfileName, 1);
 
             $this->SendDebug('Variablenprofil angelegt: ', $ProfileName, 0);
-            IPS_LogMessage('Sony TV', 'Variablenprofil angelegt: ' . $ProfileName);
+            $this->LogMessage('Variablenprofil angelegt: ' . $ProfileName, KL_SUCCESS);
         } else {
             $this->CheckProfileType($ProfileName, IPSVarType::vtInteger);
         }
@@ -985,7 +996,7 @@ class SonyTV extends IPSModule
     {
         if (count($Associations) == 0) {
             trigger_error(__FUNCTION__ . ': Associations of profil "' . $ProfileName . '" is empty');
-            IPS_LogMessage(__FUNCTION__, json_encode(debug_backtrace()));
+            $this->LogMessage(json_encode(debug_backtrace()), KL_ERROR);
 
             return;
         }

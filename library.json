@@ -1,13 +1,13 @@
 {
   "id": "{15866F76-A025-4016-8C86-543A7663F3EB}",
-  "author": "Burkhard Maas",
+  "author": "bumaas",
   "name": "Sony TV",
   "url": "",
   "compatibility": {
     "version": "5.0",
     "date": 1531150015
   },
-  "version": "1.0.0",
-  "build": 0,
-  "date": 0
+  "version": "1.0",
+  "build": 10,
+  "date": 1536074299
 }
