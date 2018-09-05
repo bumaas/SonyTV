@@ -17,13 +17,13 @@ https://github.com/waynehaffenden/bravia
 
  */
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 class IPSVarType extends stdClass
 {
 
     //  API VariableTypes
-    const vtNone = - 1;
+    const vtNone = -1;
     const vtBoolean = 0;
     const vtInteger = 1;
     const vtFloat = 2;
@@ -464,9 +464,9 @@ class SonyTV extends IPSModule
         IPS_SetProperty($this->InstanceID, 'ApplicationList', $response);
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
-        $this->WriteApplicationListProfile($ApplicationList);
+        $this->WriteListProfile('STV.Applications', $ApplicationList);
 
-        $this->SendDebug(__FUNCTION__, 'ApplicationList: '.json_encode($response), 0);
+        $this->SendDebug(__FUNCTION__, 'ApplicationList: ' . json_encode($response), 0);
 
         return true;
     }
@@ -534,23 +534,23 @@ class SonyTV extends IPSModule
 
         if (!$response || isset(json_decode($response, true)['error'])) {
             // z.B. {'error':[7, 'Illegal State'}
-            $this->SetValueInteger('InputSource', - 1);
+            $this->SetValueInteger('InputSource', -1);
 
             return false;
         }
 
         $Sources = json_decode($this->ReadPropertyString('SourceList'), true);
 
-        if (!is_array($Sources)){
+        if (!is_array($Sources)) {
             return false;
         }
 
-        $json_a  = json_decode($response, true);
+        $json_a = json_decode($response, true);
 
         foreach ($Sources as $key => $source) {
             if ($source['uri'] == $json_a['result'][0]['uri']) {
                 $this->SetValueInteger('InputSource', $key);
-                $this->SetValueInteger('Application', - 1);
+                $this->SetValueInteger('Application', -1);
 
                 return $source['title'];
             }
@@ -794,9 +794,9 @@ class SonyTV extends IPSModule
         IPS_SetProperty($this->InstanceID, 'SourceList', $response);
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
-        $this->WriteSourceListProfile($response);
+        $this->WriteListProfile('STV.Sources', $response);
 
-        $this->SendDebug(__FUNCTION__, 'SourceList: '.json_encode($response), 0);
+        $this->SendDebug(__FUNCTION__, 'SourceList: ' . json_encode($response), 0);
 
         return true;
     }
@@ -825,33 +825,21 @@ class SonyTV extends IPSModule
         IPS_SetProperty($this->InstanceID, 'RemoteControllerInfo', $response);
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
-        $this->WriteRemoteControllerInfoProfile($response);
+        $this->WriteListProfile('STV.RemoteKey', $response);
 
-        $this->SendDebug(__FUNCTION__, 'RemoteControllerInfo: '.json_encode($response), 0);
+        $this->SendDebug(__FUNCTION__, 'RemoteControllerInfo: ' . json_encode($response), 0);
 
         return true;
     }
 
-    private function WriteSourceListProfile(String $SourceList)
+
+    private function WriteListProfile(String $ProfileName, String $jsonList)
     {
-        $sources = json_decode($SourceList, true);
+        $list = json_decode($jsonList, true);
 
-        $ass[] = [- 1, '-', '', - 1];
-        foreach ($sources as $key => $source) {
-            $ass[] = [$key, $source['title'], '', - 1];
-        }
-
-        $this->CreateProfileIntegerAss('STV.Sources', '', '', '', 0, 0, $ass);
-    }
-
-    private function WriteApplicationListProfile(String $ApplicationList)
-    {
-        $ProfileName  = 'STV.Applications';
-        $Applications = json_decode($ApplicationList, true);
-
-        $ass[] = [- 1, '-', '', - 1];
-        foreach ($Applications as $key => $Application) {
-            $ass[] = [$key, html_entity_decode($Application['title']), '', - 1];
+        $ass[] = [-1, '-', '', -1];
+        foreach ($list as $key => $listElement) {
+            $ass[] = [$key, html_entity_decode($listElement['title']), '', -1];
         }
 
         if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
@@ -860,26 +848,7 @@ class SonyTV extends IPSModule
                  . PHP_EOL . PHP_EOL;
         }
 
-        $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, array_slice($ass, 0, 128));
-    }
-
-    private function WriteRemoteControllerInfoProfile(String $RemoteControllerInfo)
-    {
-        $ProfileName = 'STV.RemoteKey';
-        $codes       = json_decode($RemoteControllerInfo, true);
-
-        $ass[] = [- 1, '-', '', - 1];
-        foreach ($codes as $key => $code) {
-            $ass[] = [$key, $code['name'], '', - 1];
-        }
-
-        if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
-            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName
-                 . '\' übernommen:' . PHP_EOL . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
-                 . PHP_EOL . PHP_EOL;
-        }
-
-        $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, $ass);
+        $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, array_slice($ass, 0, self::MAX_PROFILE_ASSOCIATIONS));
     }
 
     private function ExtractAndSaveCookie($return)
@@ -907,7 +876,7 @@ class SonyTV extends IPSModule
             }
         }
 
-        $this->SendDebug(__FUNCTION__, 'Cookie: '.json_encode($Cookie), 0);
+        $this->SendDebug(__FUNCTION__, 'Cookie: ' . json_encode($Cookie), 0);
         return $CookieFound;
     }
 
@@ -1009,12 +978,12 @@ class SonyTV extends IPSModule
         //zunächst werden alte Assoziationen gelöscht
         //bool IPS_SetVariableProfileAssociation ( string $ProfilName, float $Wert, string $Name, string $Icon, integer $Farbe )
         foreach (IPS_GetVariableProfile($ProfileName)['Associations'] as $Association) {
-            IPS_SetVariableProfileAssociation($ProfileName, $Association['Value'], '', '', - 1);
+            IPS_SetVariableProfileAssociation($ProfileName, $Association['Value'], '', '', -1);
         }
 
         //dann werden die aktuellen eingetragen
         foreach ($Associations as $Association) {
-            IPS_SetVariableProfileAssociation($ProfileName, $Association[0], $Association[1], '', - 1);
+            IPS_SetVariableProfileAssociation($ProfileName, $Association[0], $Association[1], '', -1);
         }
     }
 
@@ -1040,20 +1009,20 @@ class SonyTV extends IPSModule
         if (!IPS_VariableProfileExists('STV.PowerStatus')) {
             $this->CreateProfileIntegerAss(
                 'STV.PowerStatus', 'Power', '', '', 0, 0, [
-                                     [0, 'Ausgeschaltet', '', - 1],
-                                     [1, 'Standby', '', - 1],
-                                     [2, 'Eingeschaltet', '', - 1],]
+                                     [0, 'Ausgeschaltet', '', -1],
+                                     [1, 'Standby', '', -1],
+                                     [2, 'Eingeschaltet', '', -1],]
             );
         }
 
         if (!IPS_VariableProfileExists('STV.RemoteKey')) {
-            $this->WriteRemoteControllerInfoProfile('[]');
+            $this->WriteListProfile('STV.RemoteKey', '[]');
         }
         if (!IPS_VariableProfileExists('STV.Sources')) {
-            $this->WriteSourceListProfile('[]');
+            $this->WriteListProfile('STV.Sources','[]');
         }
         if (!IPS_VariableProfileExists('STV.Applications')) {
-            $this->WriteApplicationListProfile('[]');
+            $this->WriteListProfile('STV.Applications', '[]');
         }
 
         if (!IPS_VariableProfileExists('STV.Volume')) {
