@@ -228,11 +228,6 @@ class SonyTV extends IPSModule
             }
 
             return $PowerStatus > 0;
-            /*                $this->GetSystemInfos();
-                            $this->GetEPGInfos();
-                            $this->GetTimerliste();
-                            $this->GetSenderliste();
-            */
         } else {
             return false;
         }
@@ -464,7 +459,7 @@ class SonyTV extends IPSModule
         IPS_SetProperty($this->InstanceID, 'ApplicationList', $response);
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
-        $this->WriteListProfile('STV.Applications', $ApplicationList);
+        $this->WriteListProfile('STV.Applications', $ApplicationList, 'title');
 
         $this->SendDebug(__FUNCTION__, 'ApplicationList: ' . json_encode($response), 0);
 
@@ -704,10 +699,10 @@ class SonyTV extends IPSModule
 
         $data = json_encode(
             [
-                "method"  => $cmd,
-                "params"  => $params,
-                "id"      => $this->InstanceID,
-                "version" => $version]
+                'method'  => $cmd,
+                'params'  => $params,
+                'id'      => $this->InstanceID,
+                'version' => $version]
         );
 
         return $this->SendCurlPost($tv_ip, $service, $headers, $data, $returnHeader, $ignoreError401);
@@ -794,7 +789,7 @@ class SonyTV extends IPSModule
         IPS_SetProperty($this->InstanceID, 'SourceList', $response);
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
-        $this->WriteListProfile('STV.Sources', $response);
+        $this->WriteListProfile('STV.Sources', $response, 'title');
 
         $this->SendDebug(__FUNCTION__, 'SourceList: ' . json_encode($response), 0);
 
@@ -825,7 +820,7 @@ class SonyTV extends IPSModule
         IPS_SetProperty($this->InstanceID, 'RemoteControllerInfo', $response);
         IPS_ApplyChanges($this->InstanceID); //Achtung: $this->ApplyChanges funktioniert hier nicht
 
-        $this->WriteListProfile('STV.RemoteKey', $response);
+        $this->WriteListProfile('STV.RemoteKey', $response, 'name');
 
         $this->SendDebug(__FUNCTION__, 'RemoteControllerInfo: ' . json_encode($response), 0);
 
@@ -833,13 +828,13 @@ class SonyTV extends IPSModule
     }
 
 
-    private function WriteListProfile(String $ProfileName, String $jsonList)
+    private function WriteListProfile(String $ProfileName, String $jsonList, String $elementName = '')
     {
         $list = json_decode($jsonList, true);
 
         $ass[] = [-1, '-', '', -1];
         foreach ($list as $key => $listElement) {
-            $ass[] = [$key, html_entity_decode($listElement['title']), '', -1];
+            $ass[] = [$key, html_entity_decode($listElement[$elementName]), '', -1];
         }
 
         if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
@@ -926,11 +921,11 @@ class SonyTV extends IPSModule
             [
                 'clientid' => $uuid,
                 'nickname' => $Nickname,
-                'level'    => 'private',],
+                'level'    => 'private'],
             [
                 [
                     'function' => 'WOL',
-                    'value'    => 'yes',],],];
+                    'value'    => 'yes']]];
     }
 
     private function CheckProfileType($ProfileName, $VarType)
@@ -1019,7 +1014,7 @@ class SonyTV extends IPSModule
             $this->WriteListProfile('STV.RemoteKey', '[]');
         }
         if (!IPS_VariableProfileExists('STV.Sources')) {
-            $this->WriteListProfile('STV.Sources','[]');
+            $this->WriteListProfile('STV.Sources', '[]');
         }
         if (!IPS_VariableProfileExists('STV.Applications')) {
             $this->WriteListProfile('STV.Applications', '[]');
