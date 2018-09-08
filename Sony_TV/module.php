@@ -39,8 +39,6 @@ class SonyTV extends IPSModule
 
     const MAX_PROFILE_ASSOCIATIONS = 128;
 
-    const VERSION = '1.0.0';
-
     // Überschreibt die interne IPS_Create($id) Funktion
     public function Create()
     {
@@ -146,7 +144,6 @@ class SonyTV extends IPSModule
                     trigger_error('Unexpected error: ' . $ret);
 
                     return false;
-                    break;
             }
         } else {
             trigger_error('Unexpected else');
@@ -207,7 +204,7 @@ class SonyTV extends IPSModule
             return false;
         }
 
-        parent::SendDebug('call function', __FUNCTION__, 0);
+        $this->SendDebug('call function', __FUNCTION__, 0);
 
         if (strlen($IP = (string) $this->ReadPropertyString('Host')) != '') {
             $PowerStatus = $this->GetPowerStatus();
@@ -242,17 +239,11 @@ class SonyTV extends IPSModule
         } else {
             $json_a = json_decode($ret, true);
             if (isset($json_a['result'])) {
-                //Neuen Wert in die Statusvariable schreiben
-                if ($Status) {
-                    //manchmal wird der Bildschirm nicht eingeschaltet, daher sicherheitshalber noch ein TvPower hinterherschicken, sofern unterstützt
-                    $RemoteCommandNames = array_column(json_decode($this->ReadPropertyString('RemoteControllerInfo'), true), 'name');
-                    if (in_array('TvPower', $RemoteCommandNames)) {
-                        $this->SendRemoteKey('TvPower');
-                    }
-                    $PowerStatus = 2;
-                } else {
-                    $PowerStatus = 1;
-                }
+                sleep(2); //warten bis Kommando von Sony verarbeitet wurde
+
+                // neuen Wert abfragen
+                $this->GetPowerStatus();
+                return;
             } else {
                 trigger_error('Error: ' . json_encode($json_a['error']));
                 $PowerStatus = 0;
@@ -424,7 +415,7 @@ class SonyTV extends IPSModule
 
         $return = PHP_EOL . 'SystemInformation: ' . $response . PHP_EOL . PHP_EOL;
 
-        $response = $this->callPostRequest('guide', 'getServiceProtocols', json_encode([]), [], false, '1.0');
+        $response = $this->callPostRequest('guide', 'getServiceProtocols', [], [], false, '1.0');
 
         if ($response) {
             $arr = json_decode($response, true);
@@ -563,17 +554,25 @@ class SonyTV extends IPSModule
             $ret = $this->callPostRequest('system', 'getPowerStatus', [], [], false, '1.0');
 
             if ($ret === false) {
+                $this->SetBuffer('tsLastFailedGetBufferPowerState', (string) time());
                 $PowerStatus = 0;
             } else {
                 $json_a = json_decode($ret, true);
 
                 if (isset($json_a['error'])) {
+                    $this->SetBuffer('tsLastFailedGetBufferPowerState', (string) time());
                     return false;
                 }
 
                 if (!isset($json_a['result'])) {
                     trigger_error('Unexpected return: ' . $ret);
+                    return false;
+                }
 
+                //während der Bootphase ist der status zunächst nicht korrekt (immer 'active') und wird daher ignoriert
+                $tsLastFailedGetBufferPowerState = (int) $this->GetBuffer('tsLastFailedGetBufferPowerState');
+                if ((time() - $tsLastFailedGetBufferPowerState <= 90) && ($json_a['result'][0]['status'] == 'active') && !$this->isDisplayOn()) {
+                    $this->SendDebug(__FUNCTION__, 'Bootphase noch nicht abgeschlossen: ' . (time() - $tsLastFailedGetBufferPowerState) . '(90)s', 0);
                     return false;
                 }
 
@@ -601,10 +600,27 @@ class SonyTV extends IPSModule
         return $PowerStatus;
     }
 
+    private function isDisplayOn()
+    {
+        $response = $this->callPostRequest('avContent', 'getPlayingContentInfo', [], [], false, '1.0', false, true);
+
+        if ($response === false) {
+            trigger_error(__FUNCTION__ . ': Error during call');
+        }
+
+        $response_arr = json_decode($response, true);
+        if (isset($response_arr['error'])) {
+            return !in_array($response_arr['error'][0], [7, 40005]); //Display is turned off
+        } else {
+            return true;
+        }
+    }
+
     private function UpdateCookie()
     {
         $cookie = json_decode($this->ReadPropertyString('Cookie'), true);
-        if ($cookie['ExpirationDate'] < time() - (24 * 60 * 60)) {
+
+        if (!is_null($cookie) && (($cookie['ExpirationDate'] - (24 * 60 * 60)) < time() )) {
             $ret = $this->callPostRequest('accessControl', 'actRegister', $this->GetAuthorizationParams(), [], true, '1.0');
 
             if ($ret === false) {
@@ -688,7 +704,8 @@ class SonyTV extends IPSModule
         return $params;
     }
 
-    private function callPostRequest($service, $cmd, $params, $headers, $returnHeader, $version, $ignoreError401 = false)
+    private function callPostRequest($service, $cmd, $params, $headers, $returnHeader, $version, $ignoreResponseError401 = false,
+                                     $ignoreResponseError = false)
     {
         $tv_ip  = $this->ReadPropertyString('Host');
         $cookie = json_decode($this->ReadPropertyString('Cookie'), true)['auth'];
@@ -705,12 +722,12 @@ class SonyTV extends IPSModule
                 'version' => $version]
         );
 
-        return $this->SendCurlPost($tv_ip, $service, $headers, $data, $returnHeader, $ignoreError401);
+        return $this->SendCurlPost($tv_ip, $service, $headers, $data, $returnHeader, $ignoreResponseError401, $ignoreResponseError);
     }
 
-    private function SendCurlPost($tvip, $service, $headers, $data_json, $returnHeader, $ignoreError401 = false)
+    private function SendCurlPost($tvip, $service, $headers, $data_json, $returnHeader, $ignoreResponseError401 = false, $ignoreResponseError = false)
     {
-        parent::SendDebug('send:', $data_json, 0);
+        $this->SendDebug('send:', $data_json, 0);
         $ch = curl_init('http://' . $tvip . '/sony/' . $service);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
         curl_setopt($ch, CURLOPT_POSTFIELDS, $data_json);
@@ -724,7 +741,7 @@ class SonyTV extends IPSModule
         $response   = curl_exec($ch);
         $curl_errno = curl_errno($ch);
         curl_close($ch);
-        parent::SendDebug('received:', $response, 0);
+        $this->SendDebug('received:', $response, 0);
 
         if ($curl_errno) {
             $this->LogMessage('Curl call returned with \'' . $curl_errno . '\'', KL_ERROR);
@@ -732,10 +749,13 @@ class SonyTV extends IPSModule
             return false;
         }
 
+        if ($ignoreResponseError) {
+            return $response;
+        }
         $json_a = json_decode($response, true);
 
         if (isset($json_a['error'])) {
-            if (!($json_a['error'][0] == 401 && $ignoreError401)) {
+            if (!($json_a['error'][0] == 401 && $ignoreResponseError401)) {
                 $this->LogMessage('TV replied with error \'' . implode(', ', $json_a['error']) . '\'', KL_ERROR);
 
                 return false;
