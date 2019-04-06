@@ -2,16 +2,16 @@
 
 Dieses Modul ermöglicht die Kommunikation mit einem Sony TV.
 
-### Inhaltverzeichnis
+### Inhaltsverzeichnis
 
-1. [Funktionsumfang](#1.-funktionsumfang)  
-2. [Voraussetzungen](#2.-voraussetzungen)  
-3. [Software-Installation](#3.-software-installation)
-4. [Einrichten der Instanzen in IP-Symcon](#4.-einrichten-der-instanzen-in-ip-symcon)
-5. [Statusvariablen und Profile](#5.-statusvariablen-und-profile)  
-6. [WebFront](#6.-webfront)
-7. [PHP-Befehlsreferenz](#7.-php-befehlsreferenz) 
-8. [Anhang](#8.-anhang)  
+1. [Funktionsumfang](#1-funktionsumfang)  
+2. [Voraussetzungen](#2-voraussetzungen)  
+3. [Software-Installation](#3-software-installation)
+4. [Einrichten der Instanzen in IP-Symcon](#4-einrichten-der-instanzen-in-ip-symcon)
+5. [Statusvariablen und Profile](#5-statusvariablen-und-profile)  
+6. [WebFront](#6-webfront)
+7. [PHP-Befehlsreferenz](#7-php-befehlsreferenz) 
+8. [Anhang](#8-anhang)  
 
 ### 1. Funktionsumfang
 
@@ -33,18 +33,21 @@ Der Status des Gerätes wird im eingestellten Intervall gelesen und in den Statu
 #### Unterstützte Modelle:
 
 Leider gibt es keine Dokumentation von Sony zu den angebotenen Schnittstellen der Geräte. Getestet wurde das Modul bislang mit folgenden Modellen:
-- KD-75XE9405 (Firmware V6.2 - mit Android TV)
+- KD-75XE9405 (Firmware V6.5629 - mit Android TV)
 - KD-65X8505B (Firmware v3.0)
+- KD-55XE8505
+- KD-55XE9005
+- KD-43XD8305
+- KD-55XE8096
+- KD-55A1BAEP
+- KDL-50W805B (Firmware v3.0)
 
 Ob und wieweit es auch mit anderen Geräten funktioniert, muss ausprobert werden. Würde mich über Feedback freuen.
 
 
 ### 3. Software-Installation
 
-Das Modul ist in der Konsole von IP-Symcon unter _*Modules*_ hinzuzufügen.
-Die URL lautet:
-	
-    `https://github.com/bumaas/SonyTV`  
+Das Modul wird über den Modul Store installiert.  
 
 ### 4. Einrichten der Instanzen in IP-Symcon
 
@@ -60,8 +63,8 @@ In IP-Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Inst
 | Eigenschaft | Typ     | Standardwert | Funktion                                                              |
 | :---------: | :-----: | :----------: | :-------------------------------------------------------------------: |
 | Host        | string  |              | IP Adresse des Sony TV                  |
-| Bezeichnung | string  |  Symcon(\<ServerName\>)            | Die Bezeichnung unter der die App am TV angezeigt werden soll                            |
-| Interval    | int     |  10            | Wenn die Statusvariablen zyklisch aktualisiert werden sollen, dann ist hier das Intervall in Sekunden anzugeben|
+| Nickname | string  |  Symcon(\<ServerName\>)            | Die Bezeichnung unter der die App am TV angezeigt werden soll                            |
+| UpdateInterval    | int     |  10            | Wenn die Statusvariablen zyklisch aktualisiert werden sollen, dann ist hier das Intervall in Sekunden anzugeben|
 
 #### Testfunktionen
 

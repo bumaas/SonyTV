@@ -1,56 +1,36 @@
 {
-  "elements":
-  [
-    { "type": "Label", "label": "IP Adresse des Sony TV"},
-    { "type": "ValidationTextBox", "name": "Host", "caption": "Host" },
-
-    { "type": "Label", "label": "Die Bezeichnung der Fernbedienung"},
-    { "type": "ValidationTextBox", "name": "Nickname", "caption": "Bezeichnung"},
-
-    { "type": "Label", "label": "Wenn die Statusvariablen automatisch aktualisiert werden sollen, bitte ein Intervall in Sekunden eintragen (0 = keine Aktualisierung)."},
-    { "type": "IntervalBox", "name": "UpdateInterval", "caption": "Sekunden" }
+  "elements": [
+    {"type": "Label", "caption": "IP address of Sony TV"},
+    {"type": "ValidationTextBox", "name": "Host", "caption": "Host"},
+    {"type": "Label", "caption": "The name of the remote control"},
+    {"type": "ValidationTextBox", "name": "Nickname", "caption": "Nickname"},
+    {"type": "Label", "caption": "If the status variables are to be updated automatically, please enter an interval in seconds (0 = no update)."},
+    {"type": "NumberSpinner", "name": "UpdateInterval", "caption": "Update Interval", "suffix": "Seconds"}
   ],
-  "actions":
-  [
-    { "type": "Label", "label": "Die Fernsteuerung muss einmalig am TV angemeldet werden. Dazu bitte das TV Gerät einschalten und 'Anmeldung starten' aufrufen. Nach dem Start wird am TV ein Code angezeigt."},
-    { "type": "Button", "label": "Anmeldung starten", "onClick": "if (STV_StartRegistration($id)){echo 'Erfolgreich gestartet!';} else {echo 'Fehler beim Starten';}" },
-    { "type": "Label", "label": "Der angezeigte Code ist zeitnah unter TV-Code anzugeben. Anschließend bitte die Anmeldung mit 'Anmelde Code senden' abschließen."},
-    { "type": "ValidationTextBox", "name": "TVCode", "caption": "TV Code"},
-    { "type": "Button", "label": "Anmelde Code senden", "onClick": "if (STV_SendAuthorizationKey($id, $TVCode)){echo 'Gesendet!';} else {echo 'Fehler beim Senden';}" },
-    { "type": "Label", "label": "Mit 'Statusvariablen aktualisieren' können unabhängig vom eingestellten Intervall die Variablen einmalig aktualisiert werden."},
-    { "type": "Button", "label": "Statusvariablen aktualisieren", "onClick": "if (STV_UpdateAll($id)){echo 'OK.';} else {echo 'Fehler beim Aktualisieren';}" },
-    { "type": "Label", "label": "Mit 'Applikationsliste aktualisieren' werden die installierten Apps neu eingelesen."},
-    { "type": "Button", "label": "Applikationsliste aktualisieren", "onClick": "if (STV_UpdateApplicationList($id)){echo 'OK.';} else {echo 'Fehler beim Aktualisieren';}" },
-    { "type": "Label", "label": "Mit 'Datei mit API Informationen erstellen' wird im IP-Symcon Log-Verzeichnis eine Supportdatei erstellt. Sie beinhaltet eine Auflistung aller vom TV-Gerät unterstützten Funktion."},
-    { "type": "Button", "label": "Datei mit API Informationen erstellen", "onClick": "if (STV_WriteAPIInformationToFile($id, '')){echo 'OK.';} else {echo 'Fehler beim Schreiben der Datei';}" }
+  "actions":  [
+    {"type": "Label", "caption": "The remote control must be registered once on the TV. To do this, please switch on the TV set and call 'Start registration'. After the start, a code will be displayed on the TV."},
+    {"type": "Button", "caption": "Start registration", "onClick": "if (STV_StartRegistration($id)){echo 'Erfolgreich gestartet!';} else {echo 'Fehler beim Starten';}"},
+    {"type": "Label", "caption": "The displayed code has to be entered under TV code in a timely manner. Afterwards please complete the registration with 'Send login code'."},
+    {"type": "ValidationTextBox", "name": "TVCode", "caption": "TV Code"},
+    {"type": "Button", "caption": "Send login code", "onClick": "if (STV_SendAuthorizationKey($id, $TVCode)){echo 'Gesendet!';} else {echo 'Fehler beim Senden';}"},
+    {"type": "Label", "caption": "With 'Update status variables', the variables can be updated once regardless of the set interval."},
+    {"type": "Button", "caption": "Update status variables", "onClick": "if (STV_UpdateAll($id)){echo 'OK.';} else {echo 'Fehler beim Aktualisieren';}"},
+    {"type": "Label", "caption": "With 'Update application list' the installed apps are read in again."},
+    {"type": "Button", "caption": "Update application list", "onClick": "if (STV_UpdateApplicationList($id)){echo 'OK.';} else {echo 'Fehler beim Aktualisieren';}"},
+    {"type": "Label", "caption": "With 'Create file with API information' a support file is created in the IP-Symcon log directory. It contains a list of all functions supported by the TV set."},
+    {"type": "Button", "caption": "Create file with API information", "onClick": "if (STV_WriteAPIInformationToFile($id, '')){echo 'OK.';} else {echo 'Fehler beim Schreiben der Datei';}"},
+    {"type": "TestCenter"}
   ],
-  "status":
-  [
+  "status":   [
     {
-      "code": 101,
-      "icon": "inactive",
-      "caption": "Instanz wird erstellt."
+      "code":    202,
+      "icon":    "error",
+      "caption": "IP address can not be empty."
     },
     {
-      "code": 102,
-      "icon": "active",
-      "caption": "Instanz ist aktiv."
-    },
-    {
-      "code": 104,
-      "icon": "inactive",
-      "caption": "TV ist nicht aktiv."
-    },
-    {
-      "code": 202,
-      "icon": "error",
-      "caption": "IP Adresse darf nicht leer sein."
-    },
-    {
-      "code": 204,
-      "icon": "error",
-      "caption": "IP Adresse ist nicht gültig."
+      "code":    204,
+      "icon":    "error",
+      "caption": "IP address is not valid."
     }
   ]
-
 }

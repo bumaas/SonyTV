@@ -1,0 +1,27 @@
+{
+  "translations": {
+    "de": {
+      "IP address of Sony TV": "IP Adresse des Sony TV",
+      "Host": "Host",
+      "The name of the remote control": "Die Bezeichnung der Fernbedienung",
+      "Nickname": "Bezeichnung",
+      "If the status variables are to be updated automatically, please enter an interval in seconds (0 = no update).": "Wenn die Statusvariablen automatisch aktualisiert werden sollen, bitte ein Intervall in Sekunden eintragen (0 = keine Aktualisierung).",
+      "Update Interval": "Aktualisierungsintervall",
+      "Seconds": "Sekunden",
+      "The remote control must be registered once on the TV. To do this, please switch on the TV set and call 'Start registration'. After the start, a code will be displayed on the TV.": "Die Fernsteuerung muss einmalig am TV angemeldet werden. Dazu bitte das TV Gerät einschalten und 'Anmeldung starten' aufrufen. Nach dem Start wird am TV ein Code angezeigt.",
+      "Start registration": "Anmeldung starten",
+      "The displayed code has to be entered under TV code in a timely manner. Afterwards please complete the registration with 'Send registration code'.": "Der angezeigte Code ist zeitnah unter TV-Code anzugeben. Anschließend bitte die Anmeldung mit 'Anmelde Code senden' abschließen.",
+      "TV Code": "TV Code",
+      "Send login code": "Anmelde Code senden",
+      "With 'Update status variables', the variables can be updated once regardless of the set interval.": "Mit 'Statusvariablen aktualisieren' können unabhängig vom eingestellten Intervall die Variablen einmalig aktualisiert werden.",
+      "Update status variables": "Statusvariablen aktualisieren",
+      "With 'Update application list' the installed apps are read in again.": "Mit 'Applikationsliste aktualisieren' werden die installierten Apps neu eingelesen.",
+      "Update application list": "Applikationsliste aktualisieren",
+      "With 'Create file with API information' a support file is created in the IP-Symcon log directory. It contains a list of all functions supported by the TV set.":
+      "Mit 'Datei mit API Informationen erstellen' wird im IP-Symcon Log-Verzeichnis eine Supportdatei erstellt. Sie beinhaltet eine Auflistung aller vom TV-Gerät unterstützten Funktionen.",
+      "Create file with API information": "Datei mit API Informationen erstellen",
+      "IP address can not be empty.": "IP Adresse darf nicht leer sein.",
+      "IP address is not valid.": "IP Adresse ist nicht gültig."
+    }
+  }
+}
