@@ -21,7 +21,15 @@
       "Mit 'Datei mit API Informationen erstellen' wird im IP-Symcon Log-Verzeichnis eine Supportdatei erstellt. Sie beinhaltet eine Auflistung aller vom TV-Gerät unterstützten Funktionen.",
       "Create file with API information": "Datei mit API Informationen erstellen",
       "IP address can not be empty.": "IP Adresse darf nicht leer sein.",
-      "IP address is not valid.": "IP Adresse ist nicht gültig."
+      "IP address is not valid.": "IP Adresse ist nicht gültig.",
+      "Error writing the file.": "Fehler beim Erstellen der Datei.",
+      "OK.": "OK.",
+      "Error while updating.": "Fehler beim Aktualisieren.",
+      "Submitted!": "Gesendet!",
+      "Error while sending.": "Fehler beim Senden.",
+      "Successfully started.": "Erfolgreich gestartet.",
+      "Error on startup.": "Fehler beim Starten.",
+      "Please enter TV Code.": "Bitte TV Code angeben."
     }
   }
 }

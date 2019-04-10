@@ -159,7 +159,7 @@ class SonyTV extends IPSModule
     {
         $TVCode = trim($TVCode);
         if ($TVCode === '') {
-            echo 'Bitte TV Code angeben.';
+            echo $this->Translate('Bitte TV Code angeben.') . ' ';
 
             return false;
         }
@@ -413,6 +413,10 @@ class SonyTV extends IPSModule
     public function WriteAPIInformationToFile(string $filename = ''): bool
     {
         $response = $this->callPostRequest('system', 'getSystemInformation', [], [], false, '1.0');
+        if (!$response){
+            return false;
+        }
+
         if ($filename === '') {
             $filename = IPS_GetLogDir() . 'Sony ' . json_decode($response, true)['result'][0]['model'] . '.txt';
         }
@@ -965,7 +969,7 @@ class SonyTV extends IPSModule
             IPS_CreateVariableProfile($ProfileName, 1);
 
             $this->SendDebug('Variablenprofil angelegt: ', $ProfileName, 0);
-            $this->LogMessage('Variablenprofil angelegt: ' . $ProfileName, KL_SUCCESS);
+            $this->LogMessage('Variablenprofil angelegt: ' . $ProfileName, KL_MESSAGE);
         } else {
             $this->CheckProfileType($ProfileName, IPSVarType::vtInteger);
         }
