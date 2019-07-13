@@ -23,18 +23,18 @@ class IPSVarType extends stdClass
 {
 
     //  API VariableTypes
-    public const vtNone = -1;
+    public const vtNone    = -1;
     public const vtBoolean = 0;
     public const vtInteger = 1;
-    public const vtFloat = 2;
-    public const vtString = 3;
+    public const vtFloat   = 2;
+    public const vtString  = 3;
 }
 
 // Klassendefinition
 class SonyTV extends IPSModule
 {
 
-    private const STATUS_INST_IP_IS_EMPTY = 202;
+    private const STATUS_INST_IP_IS_EMPTY   = 202;
     private const STATUS_INST_IP_IS_INVALID = 204; //IP Adresse ist ungültig
 
     private const MAX_PROFILE_ASSOCIATIONS = 128;
@@ -413,7 +413,7 @@ class SonyTV extends IPSModule
     public function WriteAPIInformationToFile(string $filename = ''): bool
     {
         $response = $this->callPostRequest('system', 'getSystemInformation', [], [], false, '1.0');
-        if (!$response){
+        if (!$response) {
             return false;
         }
 
@@ -612,6 +612,7 @@ class SonyTV extends IPSModule
 
         if ($response === false) {
             trigger_error(__FUNCTION__ . ': Error during call');
+            return false;
         }
 
         $response_arr = json_decode($response, true);
@@ -626,7 +627,7 @@ class SonyTV extends IPSModule
     {
         $cookie = json_decode($this->ReadPropertyString('Cookie'), true);
 
-        if ($cookie !== null && (strtotime('-1 day',$cookie['ExpirationDate']) < time())) {
+        if ($cookie !== null && (strtotime('-1 day', $cookie['ExpirationDate']) < time())) {
             $ret = $this->callPostRequest('accessControl', 'actRegister', $this->GetAuthorizationParams(), [], true, '1.0');
 
             if ($ret === false) {
@@ -761,7 +762,7 @@ class SonyTV extends IPSModule
         $json_a = json_decode($response, true);
 
         if (isset($json_a['error']) && !($json_a['error'][0] === 401 && $ignoreResponseError401)) {
-            $this->LogMessage(sprintf('TV replied with error \'%s\' to the data \'%s\'',  implode(', ', $json_a['error']), $data_json), KL_ERROR);
+            $this->LogMessage(sprintf('TV replied with error \'%s\' to the data \'%s\'', implode(', ', $json_a['error']), $data_json), KL_ERROR);
 
             return false;
         }
@@ -852,7 +853,7 @@ class SonyTV extends IPSModule
     }
 
 
-    private function WriteListProfile(String $ProfileName, String $jsonList, String $elementName = ''): void
+    private function WriteListProfile(string $ProfileName, string $jsonList, string $elementName = ''): void
     {
         $list = json_decode($jsonList, true);
 
@@ -1030,7 +1031,7 @@ class SonyTV extends IPSModule
                 'STV.PowerStatus', 'Power', '', '', 0, 0, [
                                      [0, 'Ausgeschaltet', '', -1],
                                      [1, 'Standby', '', -1],
-                                     [2, 'Eingeschaltet', '', -1],]
+                                     [2, 'Eingeschaltet', '', -1]]
             );
         }
 

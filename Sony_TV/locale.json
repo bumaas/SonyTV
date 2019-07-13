@@ -1,6 +1,8 @@
 {
   "translations": {
     "de": {
+      "In this instance, all parameters for controlling a Sony TV are stored. The description of the individual parameters can be found in the documentation.": "In dieser Instanz werden alle Parameter zur Steuerung eines Sony TV hinterlegt. Die Beschreibung der einzelnen Parameter ist in der Dokumentation zu finden.",
+      "Show Documentation": "Öffne Dokumentation",
       "IP address of Sony TV": "IP Adresse des Sony TV",
       "Host": "Host",
       "The name of the remote control": "Die Bezeichnung der Fernbedienung",

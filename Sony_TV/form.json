@@ -1,5 +1,11 @@
 {
   "elements": [
+    {
+      "type": "RowLayout", "items": [
+      {"type": "Label", "caption": "In this instance, all parameters for controlling a Sony TV are stored. The description of the individual parameters can be found in the documentation."},
+      {"type": "Button", "caption": "Show Documentation", "onClick": "echo 'https://github.com/bumaas/SonyTV/blob/master/README.md';", "link": true}
+    ]
+    },
     {"type": "Label", "caption": "IP address of Sony TV"},
     {"type": "ValidationTextBox", "name": "Host", "caption": "Host"},
     {"type": "Label", "caption": "The name of the remote control"},
