@@ -21,7 +21,6 @@ declare(strict_types=1);
 
 class IPSVarType extends stdClass
 {
-
     //  API VariableTypes
     public const vtNone    = -1;
     public const vtBoolean = 0;
@@ -33,7 +32,6 @@ class IPSVarType extends stdClass
 // Klassendefinition
 class SonyTV extends IPSModule
 {
-
     private const STATUS_INST_IP_IS_EMPTY   = 202;
     private const STATUS_INST_IP_IS_INVALID = 204; //IP Adresse ist ungültig
 
@@ -145,12 +143,10 @@ class SonyTV extends IPSModule
                     break;
                 default:
                     trigger_error('Unexpected error: ' . $ret);
-
                     return false;
             }
         } else {
             trigger_error('Unexpected else');
-
             return false;
         }
     }
@@ -160,7 +156,6 @@ class SonyTV extends IPSModule
         $TVCode = trim($TVCode);
         if ($TVCode === '') {
             echo $this->Translate('Bitte TV Code angeben.') . ' ';
-
             return false;
         }
 
@@ -203,7 +198,6 @@ class SonyTV extends IPSModule
         // IP-Symcon Kernel ready?
         if (IPS_GetKernelRunlevel() !== KR_READY) { //Kernel ready
             $this->LogMessage('Kernel is not ready (' . IPS_GetKernelRunlevel() . ')', KL_NOTIFY);
-
             return false;
         }
 
@@ -264,7 +258,6 @@ class SonyTV extends IPSModule
         $response = $this->callPostRequest('avContent', 'setPlayContent', [['uri' => $uri]], [], false, '1.0');
 
         if ($response === false) {
-
             return false;
         }
 
@@ -272,7 +265,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -284,7 +276,6 @@ class SonyTV extends IPSModule
         $response = $this->callPostRequest('audio', 'setAudioMute', [['status' => $status]], [], false, '1.0');
 
         if ($response === false) {
-
             return false;
         }
 
@@ -292,7 +283,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -306,7 +296,6 @@ class SonyTV extends IPSModule
         $response = $this->callPostRequest('audio', 'setAudioVolume', [['target' => 'speaker', 'volume' => (string) $volume]], [], false, '1.0');
 
         if ($response === false) {
-
             return false;
         }
 
@@ -314,7 +303,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -330,7 +318,6 @@ class SonyTV extends IPSModule
         );
 
         if ($response === false) {
-
             return false;
         }
 
@@ -338,7 +325,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -356,7 +342,6 @@ class SonyTV extends IPSModule
         $response = $this->callPostRequest('appControl', 'setActiveApp', [['uri' => $uri]], [], false, '1.0');
 
         if ($response === false) {
-
             return false;
         }
 
@@ -364,7 +349,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -449,7 +433,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -477,7 +460,6 @@ class SonyTV extends IPSModule
         $response = $this->callPostRequest('audio', 'getVolumeInformation', [], [], false, '1.0');
 
         if ($response === false) {
-
             return false;
         }
 
@@ -485,7 +467,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -527,7 +508,6 @@ class SonyTV extends IPSModule
         if (!$response || isset(json_decode($response, true)['error'])) {
             // z.B. {'error':[7, 'Illegal State'}
             $this->SetValueInteger('InputSource', -1);
-
             return false;
         }
 
@@ -752,7 +732,6 @@ class SonyTV extends IPSModule
 
         if ($curl_errno) {
             $this->LogMessage('Curl call returned with \'' . $curl_errno . '\'', KL_ERROR);
-
             return false;
         }
 
@@ -763,7 +742,6 @@ class SonyTV extends IPSModule
 
         if (isset($json_a['error']) && !($json_a['error'][0] === 401 && $ignoreResponseError401)) {
             $this->LogMessage(sprintf('TV replied with error \'%s\' to the data \'%s\'', implode(', ', $json_a['error']), $data_json), KL_ERROR);
-
             return false;
         }
 
@@ -783,7 +761,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -800,7 +777,6 @@ class SonyTV extends IPSModule
 
                 if (!isset($json_a['result'])) {
                     trigger_error('Unexpected return: ' . $response);
-
                     return false;
                 }
 
@@ -829,7 +805,6 @@ class SonyTV extends IPSModule
             trigger_error('callPostRequest failed!');
             $this->SetValueInteger('PowerStatus', 0); //off
             $this->SetStatus(IS_INACTIVE);
-
             return false;
         }
 
@@ -837,7 +812,6 @@ class SonyTV extends IPSModule
 
         if (!isset($json_a['result'])) {
             trigger_error('Unexpected return: ' . $response);
-
             return false;
         }
 
@@ -921,7 +895,6 @@ class SonyTV extends IPSModule
 
             return true;
         }
-
         return false;
     }
 
@@ -933,7 +906,6 @@ class SonyTV extends IPSModule
 
             return true;
         }
-
         return false;
     }
 
