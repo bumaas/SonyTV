@@ -745,7 +745,6 @@ class SonyTV extends IPSModule
             return false;
         }
 
-
         return $response;
     }
 
@@ -825,7 +824,6 @@ class SonyTV extends IPSModule
 
         return true;
     }
-
 
     private function WriteListProfile(string $ProfileName, string $jsonList, string $elementName = ''): void
     {
