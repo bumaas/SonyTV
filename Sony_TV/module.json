@@ -1,13 +1,12 @@
 {
-  "id": "{3B91F3E3-FB8F-4E3C-A4BB-4E5C92BBCD58}",
-  "name": "Sony TV",
-  "type": 3,
-  "vendor": "",
-  "aliases":
-  [
-  ],
+  "id":                 "{3B91F3E3-FB8F-4E3C-A4BB-4E5C92BBCD58}",
+  "name":               "Sony TV",
+  "type":               3,
+  "vendor":             "Sony",
+  "aliases":            [],
   "parentRequirements": [],
-  "childRequirements": [],
-  "implemented": [],
-  "prefix": "STV"
+  "childRequirements":  [],
+  "implemented":        [],
+  "prefix":             "STV",
+  "url":                "https://github.com/bumaas/SonyTV/blob/master/README.md"
 }

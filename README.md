@@ -27,7 +27,7 @@ Der Status des Gerätes wird im eingestellten Intervall gelesen und in den Statu
 
 ### 2. Voraussetzungen
 
- - IPS 5.0
+ - IPS 5.3
  - Sony TV mit Netzwerkanschluss. Fernsteuerung des Sony TV muss aktiviert sein (siehe Dokumentation des TV). IP-Symcon muss im gleichen Netzwerk wie der TV sein.
 
 #### Unterstützte Modelle:

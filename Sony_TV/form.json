@@ -1,17 +1,21 @@
 {
   "elements": [
-    {
-      "type": "RowLayout", "items": [
-      {"type": "Label", "caption": "In this instance, all parameters for controlling a Sony TV are stored. The description of the individual parameters can be found in the documentation."},
-      {"type": "Button", "caption": "Show Documentation", "onClick": "echo 'https://github.com/bumaas/SonyTV/blob/master/README.md';", "link": true}
-    ]
-    },
+    {"type": "Label", "caption": "In this instance, all parameters for controlling a Sony TV are stored. The description of the individual parameters can be found in the documentation."},
     {"type": "Label", "caption": "IP address of Sony TV"},
     {"type": "ValidationTextBox", "name": "Host", "caption": "Host"},
     {"type": "Label", "caption": "The name of the remote control"},
     {"type": "ValidationTextBox", "name": "Nickname", "caption": "Nickname"},
-    {"type": "Label", "caption": "If the status variables are to be updated automatically, please enter an interval in seconds (0 = no update)."},
-    {"type": "NumberSpinner", "name": "UpdateInterval", "caption": "Update Interval", "suffix": "Seconds"}
+    {
+      "type":  "ExpansionPanel", "caption": "Expert Parameters",
+      "items": [
+        {"type": "Label", "caption": "If the status variables are to be updated automatically, please enter an interval in seconds (0 = no update)."},
+        {"type": "NumberSpinner", "name": "UpdateInterval", "caption": "Update Interval", "suffix": "Seconds", "minimum": 0},
+        {"type": "CheckBox", "name": "WriteLogInformationToIPSLogger", "caption": "Log and Error Information are written to the logfile of IPSLibrary instead of standard logfile"},
+        {"type": "CheckBox", "name": "WriteDebugInformationToLogfile", "caption": "Debug information are written additionally to standard logfile"},
+        {"type": "CheckBox", "name": "WriteDebugInformationToIPSLogger", "caption": "Debug information are written additionally to the logfile of IPSLibrary"}
+      ]
+    }
+
   ],
   "actions":  [
     {"type": "Label", "caption": "The remote control must be registered once on the TV. To do this, please switch on the TV set and call 'Start registration'. After the start, a code will be displayed on the TV."},
