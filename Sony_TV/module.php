@@ -501,7 +501,7 @@ class SonyTV extends IPSModule
             return false;
         }
 
-        $response = $this->callPostRequest('avContent', 'getPlayingContentInfo', [], [], false, '1.0');
+        $response = $this->callPostRequest('avContent', 'getPlayingContentInfo', [], [], false, '1.0', false, true);
 
         if (!$response || isset(json_decode($response, true, 512, JSON_THROW_ON_ERROR)['error'])) {
             // z.B. {'error':[7, 'Illegal State'}
