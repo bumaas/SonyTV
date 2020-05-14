@@ -165,7 +165,11 @@ kommen, dass nicht alle Applikationen in die Liste aufgenommen wurden.
 
 Bei Bedarf - um z.B. eine eigene Auswahlliste zu erstellen - kann die vollständige Liste dem Property ApplicationList entnommen werden. Beispiel:
 
-IPS_GetProperty(int $InstanceID, 'ApplicationList'); 
+```php
+STV_ReadApplicationList(int $InstanceID):string
+```
+Die Funktion liefert eine json kodierte Liste der auf dem TV installierten Applikationen.
+
 
 ```php
 STV_WriteAPIInformationToFile(int $InstanceID, $filename)
