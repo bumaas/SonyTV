@@ -28,7 +28,7 @@ Der Status des Gerätes wird im eingestellten Intervall gelesen und in den Statu
 ### 2. Voraussetzungen
 
  - IPS 5.3
- - Sony TV mit Netzwerkanschluss. Fernsteuerung des Sony TV muss aktiviert sein (siehe Dokumentation des TV). IP-Symcon muss im gleichen Netzwerk wie der TV sein.
+ - Sony TV mit Netzwerkanschluss. Fernsteuerung des Sony TV muss aktiviert sein (siehe Dokumentation des TV und https://pro-bravia.sony.net/develop/integrate/ip-control/). IP-Symcon muss im gleichen Netzwerk wie der TV sein.
 
 #### Unterstützte Modelle:
 
@@ -63,7 +63,7 @@ In IP-Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Inst
 | Eigenschaft | Typ     | Standardwert | Funktion                                                              |
 | :---------: | :-----: | :----------: | :-------------------------------------------------------------------: |
 | Host        | string  |              | IP Adresse des Sony TV                  |
-| Nickname | string  |  Symcon(\<ServerName\>)            | Die Bezeichnung unter der die App am TV angezeigt werden soll                            |
+| PSK | string  |  0000            | Der Pre-Shared Key, der im Sony TV eingestellt ist                            |
 | UpdateInterval    | int     |  10            | Wenn die Statusvariablen zyklisch aktualisiert werden sollen, dann ist hier das Intervall in Sekunden anzugeben|
 
 #### Testfunktionen
@@ -138,19 +138,6 @@ Eine Applikation starten.
 Die Applikationen sind je Gerät unterschiedlich und werden automatisch bei der Anmeldung ausgelesen.
 
 Die möglichen Applikationen können dem Profil _*STV.Applications*_ entnommen werden.
-
-
-```php
-STV_StartRegistration(int $InstanceID)
-```
-Startet die Anmeldung/Registrierung des Moduls am Fernseher. Nach dem Start wird am Fernseher ein Code angezeigt.
-
-```php
-STV_SendAuthorizationKey(int $InstanceID, string $TVCode)
-```
-Parameter $TVCode: der bei der Anmeldung angezeigte Code
-
-Sendet den Code zum Abschluss der Registrierung an den Sony TV.
 
 ```php
 STV_UpdateAll(int $InstanceID)
