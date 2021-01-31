@@ -25,6 +25,7 @@
       "With 'Create file with API information' a support file is created in the IP-Symcon log directory. It contains a list of all functions supported by the TV set.":
       "Mit 'Datei mit API Informationen erstellen' wird im IP-Symcon Log-Verzeichnis eine Supportdatei erstellt. Sie beinhaltet eine Auflistung aller vom TV-Gerät unterstützten Funktionen.",
       "Create file with API information": "Datei mit API Informationen erstellen",
+      "Application List not yet set. Please update the application list.": "Die Applikationsliste wurde noch nicht ermittelt. Bitte die Applikationsliste aktualisieren.",
       "IP address can not be empty.": "IP Adresse darf nicht leer sein.",
       "IP address is not valid.": "IP Adresse ist nicht gültig.",
       "Error writing the file.": "Fehler beim Erstellen der Datei.",

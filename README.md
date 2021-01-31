@@ -33,12 +33,13 @@ Der Status des Gerätes wird im eingestellten Intervall gelesen und in den Statu
 #### Unterstützte Modelle:
 
 Leider gibt es keine Dokumentation von Sony zu den angebotenen Schnittstellen der Geräte. Getestet wurde das Modul bislang mit folgenden Modellen:
-- KD-75XE9405 (Firmware V6.5629 - mit Android TV)
+- KD-65XG8588 
+- KD-75XE9405 (Firmware V6.5629)
 - KD-65X8505B (Firmware v3.0)
 - KD-55XE8505
 - KD-55XE9005
-- KD-43XD8305
 - KD-55XE8096
+- KD-43XD8305
 - KD-55A1BAEP
 - KDL-50W805B (Firmware v3.0)
 
@@ -67,10 +68,6 @@ In IP-Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Inst
 | UpdateInterval    | int     |  10            | Wenn die Statusvariablen zyklisch aktualisiert werden sollen, dann ist hier das Intervall in Sekunden anzugeben|
 
 #### Testfunktionen
-
-Anmeldung starten
-
-Anmeldecode senden
 
 Alle Daten aktualisieren
 

@@ -40,12 +40,10 @@ class SonyTV extends IPSModule
     private const ATTR_REMOTECONTROLLERINFO = 'RemoteControllerInfo';
     private const ATTR_SOURCELIST           = 'SourceList';
     private const ATTR_APPLICATIONLIST      = 'ApplicationList';
-    private const ATTR_COOKIE               = 'Cookie';
     private const ATTR_UUID                 = 'UUID';
 
     private const SYSTEM_ERROR_ILLEGAL_STATE = 7;
     private const HTTP_ERROR_NOT_FOUND = 404;
-    private const COMMON_ERROR_DISPLAY_OFF = 40005;
 
     // Überschreibt die interne IPS_Create($id) Funktion
     public function Create()
@@ -378,7 +376,7 @@ class SonyTV extends IPSModule
         $Applications = json_decode($this->ReadAttributeString(self::ATTR_APPLICATIONLIST), true);
 
         if ($Applications === null) {
-            trigger_error('Application List not yet set. Please repeat the registration');
+            trigger_error('Application List not yet set. Please update the application list.');
             return false;
         }
 
@@ -432,7 +430,6 @@ class SonyTV extends IPSModule
 
     public function UpdateApplicationList(): bool
     {
-        return true;
         $response = $this->SendRestAPIRequest('appControl', 'getApplicationList', [], '1.0', [], []);
 
         if ($response === false) {
@@ -636,7 +633,6 @@ class SonyTV extends IPSModule
         foreach ($Sources as $source) {
             if ($source['title'] === $Name) {
                 return $source['uri'];
-                break;
             }
         }
 
@@ -648,7 +644,6 @@ class SonyTV extends IPSModule
         foreach ($codes as $code) {
             if ($code['name'] === $Name) {
                 return $code['value'];
-                break;
             }
         }
 
@@ -658,7 +653,8 @@ class SonyTV extends IPSModule
     private function ListAPIInfoOfService($servicename, &$return): void
     {
         $return   .= 'Service: ' . $servicename . PHP_EOL;
-        $response = $this->SendRestAPIRequest($servicename, 'getMethodTypes', [''], '1.0', [], []);
+        // der Service 'Contentshare' hat wohl keine Funktionen -> 404 wird ignoriert
+        $response = $this->SendRestAPIRequest($servicename, 'getMethodTypes', [''], '1.0', [], [self::HTTP_ERROR_NOT_FOUND]);
         if ($response) {
             $arr = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
             if (isset($arr['result'])) {
@@ -699,35 +695,6 @@ class SonyTV extends IPSModule
         return $params;
     }
 
-    private function callPostRequest(
-        $service,
-        $method,
-        array $params,
-        $headers,
-        $version,
-        $ignoreResponse,
-        $ignoredResponseErrors
-    ) {
-        $tv_ip  = $this->ReadPropertyString(self::PROP_HOST);
-        $cookie = json_decode($this->ReadAttributeString(self::ATTR_COOKIE), true, 512);
-
-        if (isset($cookie['auth'])) {
-            $headers[] = 'Cookie: auth=' . $cookie['auth'];
-        }
-
-        $data = json_encode(
-            [
-                'method'  => $method,
-                'params'  => $params,
-                'id'      => $this->InstanceID,
-                'version' => $version
-            ],
-            JSON_THROW_ON_ERROR,
-            512
-        );
-
-        return $this->SendCurlPost($tv_ip, $service, $headers, $data, $ignoreResponse, [], $ignoredResponseErrors);
-    }
 
     private function SendCurlPost($tvip, $service, $headers, $data, $ignoreResponse, $ignoredCurlErrors, $ignoredResponseErrors)
     {
@@ -801,8 +768,6 @@ class SonyTV extends IPSModule
         if ($IRCCCode === false) {
             trigger_error('Invalid RemoteKey');
         }
-
-        $cookie = json_decode($this->ReadAttributeString(self::ATTR_COOKIE), true, 512, JSON_THROW_ON_ERROR)['auth'];
 
         $data = '<?xml version="1.0"?>';
         $data .= '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">';
@@ -905,7 +870,6 @@ class SonyTV extends IPSModule
 
     private function GetRemoteControllerInfo(): bool
     {
-        return true;
         $response = $this->SendRestAPIRequest('system', 'getRemoteControllerInfo', [], '1.0', [], []);
 
         if ($response === false) {
@@ -940,9 +904,9 @@ class SonyTV extends IPSModule
         }
 
         if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
-            echo 'Die maximale Anzahl Assoziationen ist überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName
-                 . '\' übernommen:' . PHP_EOL . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
-                 . PHP_EOL . PHP_EOL;
+            $this->Logger_Inf(__FUNCTION__ . ': Die maximale Anzahl Assoziationen (' . self::MAX_PROFILE_ASSOCIATIONS . ') wurde überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName
+                 . '\' übernommen: ' . PHP_EOL . implode(', ', array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1))
+            );
         }
 
         $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, 0, array_slice($ass, 0, self::MAX_PROFILE_ASSOCIATIONS));
@@ -1105,7 +1069,6 @@ class SonyTV extends IPSModule
         $this->RegisterAttributeString(self::ATTR_REMOTECONTROLLERINFO, '');
         $this->RegisterAttributeString(self::ATTR_SOURCELIST, '');
         $this->RegisterAttributeString(self::ATTR_APPLICATIONLIST, '');
-        $this->RegisterAttributeString(self::ATTR_COOKIE, '');
     }
 
     private function RegisterVariables(): void
