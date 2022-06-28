@@ -599,10 +599,10 @@ class SonyTV extends IPSModule
     {
         $IP        = $this->ReadPropertyString(self::PROP_HOST);
 
-        $connected = @Sys_Ping($IP, 5000);
+        $connected = @Sys_Ping($IP, 20000);
         //second try if the current status is active
         if (!$connected && ($this->GetStatus() === IS_ACTIVE)) {
-            $connected = @Sys_Ping($IP, 5000);
+            $connected = @Sys_Ping($IP, 20000);
             $this->Logger_Dbg(__FUNCTION__, sprintf('connected beim 2. Versuch: %s', (int) $connected));
         }
 
