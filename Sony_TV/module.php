@@ -601,7 +601,7 @@ class SonyTV extends IPSModule
 
         $this->Logger_Dbg(__FUNCTION__, sprintf('Start ...'));
 
-        for ($i = 1; $i <= 6; $i++) {
+        for ($i = 1; $i <= 10; $i++) {
             $connected = @Sys_Ping($IP, 5000);
             $this->Logger_Dbg(__FUNCTION__, sprintf('Connected (%s. Versuch): %s', $i, $connected ? 'true' : 'false'));
             //second try if the current status is active
