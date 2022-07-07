@@ -42,6 +42,9 @@ class SonyTV extends IPSModule
     private const ATTR_APPLICATIONLIST      = 'ApplicationList';
     private const ATTR_UUID                 = 'UUID';
 
+    private const BUF_TS_LASTFAILEDGETPOWERSTATE = 'tsLastFailedGetBufferPowerState';
+    private const LENGTH_OF_BOOTTIME = 90;
+
     private const SYSTEM_ERROR_ILLEGAL_STATE = 7;
     private const HTTP_ERROR_NOT_FOUND = 404;
 
@@ -616,13 +619,14 @@ class SonyTV extends IPSModule
             $ret = $this->SendRestAPIRequest('system', 'getPowerStatus', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
 
             if ($ret === false) {
-                $this->SetBuffer('tsLastFailedGetBufferPowerState', (string)time());
+                $this->SetBuffer(self::BUF_TS_LASTFAILEDGETPOWERSTATE, (string)time());
+                $this->Logger_Dbg(__FUNCTION__, sprintf('Connected, but getPowerStatus failed at %s', date(DATE_RSS)));
                 $PowerStatus = 0;
             } else {
                 $json_a = json_decode($ret, true, 512, JSON_THROW_ON_ERROR);
 
                 if (isset($json_a['error'])) {
-                    $this->SetBuffer('tsLastFailedGetBufferPowerState', (string)time());
+                    $this->SetBuffer(self::BUF_TS_LASTFAILEDGETPOWERSTATE, (string)time());
                     return null;
                 }
 
@@ -631,13 +635,17 @@ class SonyTV extends IPSModule
                     return null;
                 }
 
-                //während der Bootphase ist der status zunächst nicht korrekt (immer 'active') und wird daher ignoriert
-                $tsLastFailedGetBufferPowerState = (int)$this->GetBuffer('tsLastFailedGetBufferPowerState');
-                if (($json_a['result'][0]['status'] === 'active') && (time() - $tsLastFailedGetBufferPowerState <= 90)) {
-                    $response = $this->SendRestAPIRequest('avContent', 'getPlayingContentInfo', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::SYSTEM_ERROR_ILLEGAL_STATE]);
+                //während der Bootphase ist der status zunächst nicht korrekt (immer 'active') und wird daher anhand von 'getPlayingContentInfo' überprüft
+                $tsLastFailedGetBufferPowerState = (int)$this->GetBuffer(self::BUF_TS_LASTFAILEDGETPOWERSTATE);
+                $status = $json_a['result'][0]['status'];
 
-                    if (($response === false) || (isset($response['error']) && ($response['error'][0] !== self::SYSTEM_ERROR_ILLEGAL_STATE))) {
-                        $this->Logger_Dbg(__FUNCTION__, sprintf('Bootphase noch nicht abgeschlossen: %s (90)s', (time() - $tsLastFailedGetBufferPowerState)));
+                if (($status === 'active') && (time() - $tsLastFailedGetBufferPowerState) <= self::LENGTH_OF_BOOTTIME) {
+                    $response = $this->SendRestAPIRequest('avContent', 'getPlayingContentInfo', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::SYSTEM_ERROR_ILLEGAL_STATE]);
+                    if ($response !== false){
+                        $json_response = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+                    }
+                    if (($response === false) || (isset($json_response['error']) && ($json_response['error'][0] === self::SYSTEM_ERROR_ILLEGAL_STATE))) {
+                        $this->Logger_Dbg(__FUNCTION__, sprintf('Bootphase noch nicht abgeschlossen: %ss (%ss)', (time() - $tsLastFailedGetBufferPowerState), self::LENGTH_OF_BOOTTIME));
                         return null;
                     }
                 }
