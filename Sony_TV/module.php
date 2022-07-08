@@ -969,7 +969,7 @@ class SonyTV extends IPSModule
             );
         }
 
-        $this->CreateProfileIntegerAss($ProfileName, '', '', '', 1, 0, array_slice($ass, 0, self::MAX_PROFILE_ASSOCIATIONS));
+        $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, array_slice($ass, 0, self::MAX_PROFILE_ASSOCIATIONS));
     }
 
 /*
@@ -1067,7 +1067,7 @@ class SonyTV extends IPSModule
     /**
      * @throws \JsonException
      */
-    private function CreateProfileIntegerAss($ProfileName, $Icon, $Prefix, $Suffix, $StepSize, $Digits, $Associations): void
+    private function CreateProfileIntegerAss($ProfileName, $Icon, $Prefix, $Suffix, $Digits, $Associations): void
     {
         if (count($Associations) === 0) {
             trigger_error(__FUNCTION__ . ': Associations of profil "' . $ProfileName . '" is empty');
@@ -1079,7 +1079,7 @@ class SonyTV extends IPSModule
         $MinValue = $Associations[0][0];
         $MaxValue = $Associations[count($Associations) - 1][0];
 
-        $this->CreateProfileInteger($ProfileName, $Icon, $Prefix, $Suffix, $MinValue, $MaxValue, $StepSize, $Digits);
+        $this->CreateProfileInteger($ProfileName, $Icon, $Prefix, $Suffix, $MinValue, $MaxValue, 0, $Digits);
 
         //zunächst werden alte Assoziationen gelöscht
         //bool IPS_SetVariableProfileAssociation ( string $ProfilName, float $Wert, string $Name, string $Icon, integer $Farbe )
@@ -1124,7 +1124,6 @@ class SonyTV extends IPSModule
                 'Power',
                 '',
                 '',
-                1,
                 0,
                 [
                     [0, 'Ausgeschaltet', '', -1],
