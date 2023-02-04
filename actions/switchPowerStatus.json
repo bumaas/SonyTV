@@ -1,0 +1,16 @@
+{
+  "id": "{BC602A53-1141-10C3-E098-75BCCF0BCF3B}",
+  "caption": "Switch to Power State",
+  "form": [
+    {"type": "CheckBox",
+      "name": "VALUE",
+      "caption": "Power"
+    }
+  ],
+  "action": "STV_SetPowerStatus($_IPS['TARGET'], $_IPS['VALUE']);",
+  "restrictions": {
+    "objectType": [1],
+    "moduleID": ["{3B91F3E3-FB8F-4E3C-A4BB-4E5C92BBCD58}"]
+  },
+  "priority": 20
+}

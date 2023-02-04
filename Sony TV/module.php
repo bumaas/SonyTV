@@ -607,16 +607,23 @@ class SonyTV extends IPSModule
         for ($i = 1; $i <= 10; $i++) {
             $connected = @Sys_Ping($IP, 5000);
             $this->Logger_Dbg(__FUNCTION__, sprintf('Connected (%s. Versuch): %s', $i, $connected ? 'true' : 'false'));
-            //second try if the current status is active
+
             if ($connected || ($this->GetStatus() !== IS_ACTIVE)) {
                 break;
             }
+            //next try if the current status is active
         }
 
         if (!$connected) {
             $PowerStatus = 0;
         } else {
             $ret = $this->SendRestAPIRequest('system', 'getPowerStatus', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
+
+            if ($ret === false){
+                // zweiter Versuch, da ab und zu eine Abfrage schon mal scheitert
+                sleep (3);
+                $ret = $this->SendRestAPIRequest('system', 'getPowerStatus', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
+            }
 
             if ($ret === false) {
                 $this->SetBuffer(self::BUF_TS_LASTFAILEDGETPOWERSTATE, (string)time());

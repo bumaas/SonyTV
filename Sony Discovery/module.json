@@ -1,0 +1,12 @@
+{
+  "id":                 "{D48DDD65-5EBD-82DD-32C6-28F47531DE75}",
+  "name":               "Sony Discovery",
+  "type":               5,
+  "vendor":             "Sony",
+  "aliases":            [],
+  "parentRequirements": [],
+  "childRequirements":  [],
+  "implemented":        [],
+  "prefix":             "STV",
+  "url":                "https://github.com/bumaas/SonyTV/blob/master/README.md"
+}
