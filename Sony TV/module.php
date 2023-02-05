@@ -46,6 +46,7 @@ class SonyTV extends IPSModule
     private const LENGTH_OF_BOOTTIME = 90;
 
     private const SYSTEM_ERROR_ILLEGAL_STATE = 7;
+    private const SYSTEM_ERROR_FORBIDDEN = 403;
     private const HTTP_ERROR_NOT_FOUND = 404;
 
     // Überschreibt die interne IPS_Create($id) Funktion
@@ -567,7 +568,7 @@ class SonyTV extends IPSModule
             return;
         }
 
-        $response = $this->SendRestAPIRequest('avContent', 'getPlayingContentInfo', [], '1.0', [], [self::SYSTEM_ERROR_ILLEGAL_STATE]);
+        $response = $this->SendRestAPIRequest('avContent', 'getPlayingContentInfo', [], '1.0', [], [self::SYSTEM_ERROR_ILLEGAL_STATE, self::SYSTEM_ERROR_FORBIDDEN]);
 
         if ($response === false) {
             $this->SetValue('InputSource', -1);
@@ -647,7 +648,7 @@ class SonyTV extends IPSModule
                 $status = $json_a['result'][0]['status'];
 
                 if (($status === 'active') && (time() - $tsLastFailedGetBufferPowerState) <= self::LENGTH_OF_BOOTTIME) {
-                    $response = $this->SendRestAPIRequest('avContent', 'getPlayingContentInfo', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::SYSTEM_ERROR_ILLEGAL_STATE]);
+                    $response = $this->SendRestAPIRequest('avContent', 'getPlayingContentInfo', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::SYSTEM_ERROR_ILLEGAL_STATE, self::SYSTEM_ERROR_FORBIDDEN]);
                     if ($response !== false){
                         $json_response = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
                     }
