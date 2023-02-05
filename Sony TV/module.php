@@ -817,7 +817,7 @@ class SonyTV extends IPSModule
 
 
         if ($RemoteControllerInfo === null) {
-            trigger_error('Remote Controler Info not yet set. Please repeat the registration');
+            trigger_error('Remote Controller Info not yet set. Please repeat the registration');
             return false;
         }
 
@@ -1116,9 +1116,9 @@ class SonyTV extends IPSModule
     private function RegisterAttributes(): void
     {
         $this->RegisterAttributeString(self::ATTR_UUID, uniqid('', true));
-        $this->RegisterAttributeString(self::ATTR_REMOTECONTROLLERINFO, '');
-        $this->RegisterAttributeString(self::ATTR_SOURCELIST, '');
-        $this->RegisterAttributeString(self::ATTR_APPLICATIONLIST, '');
+        $this->RegisterAttributeString(self::ATTR_REMOTECONTROLLERINFO, json_encode(null));
+        $this->RegisterAttributeString(self::ATTR_SOURCELIST, json_encode([]));
+        $this->RegisterAttributeString(self::ATTR_APPLICATIONLIST, json_encode([]));
     }
 
     /**
