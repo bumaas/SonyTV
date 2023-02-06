@@ -77,6 +77,8 @@ class SonyTV extends IPSModule
 
         $this->SetInstanceStatus();
 
+        $this->SetSummary($this->ReadPropertyString(self::PROP_HOST));
+
         if ($this->GetStatus() === IS_ACTIVE){
             //RemoteController Informationen auslesen und in Profil schreiben
             if (!$this->GetRemoteControllerInfo()) {
@@ -89,13 +91,9 @@ class SonyTV extends IPSModule
             }
 
             //Applikationen auslesen und in Profil schreiben
-            if (!$this->UpdateApplicationList()) {
-                return;
-            }
-
+            $this->UpdateApplicationList();
         }
 
-        $this->SetSummary($this->ReadPropertyString(self::PROP_HOST));
     }
 
     /**
@@ -491,6 +489,7 @@ class SonyTV extends IPSModule
 
     /**
      * @throws \JsonException
+     * @noinspection PhpUnused
      */
     public function ReadApplicationList(): string
     {
@@ -603,7 +602,7 @@ class SonyTV extends IPSModule
     {
         $IP        = $this->ReadPropertyString(self::PROP_HOST);
 
-        $this->Logger_Dbg(__FUNCTION__, sprintf('Start ...'));
+        $this->Logger_Dbg(__FUNCTION__, 'Start ...');
 
         for ($i = 1; $i <= 10; $i++) {
             $connected = @Sys_Ping($IP, 5000);
@@ -682,7 +681,7 @@ class SonyTV extends IPSModule
         return $PowerStatus;
     }
 
-    private function GetUriOfSource($Sources, $Name)
+    private function GetUriOfSource($Sources, $Name): string
     {
         foreach ($Sources as $source) {
             if ($source['title'] === $Name) {
@@ -690,10 +689,10 @@ class SonyTV extends IPSModule
             }
         }
 
-        return false;
+        return '';
     }
 
-    private function GetIRCCCode($codes, $Name)
+    private function GetIRCCCode($codes, $Name): string
     {
         foreach ($codes as $code) {
             if ($code['name'] === $Name) {
@@ -701,7 +700,7 @@ class SonyTV extends IPSModule
             }
         }
 
-        return false;
+        return '';
     }
 
     /**
@@ -822,7 +821,7 @@ class SonyTV extends IPSModule
         }
 
         $IRCCCode = $this->GetIRCCCode($RemoteControllerInfo, $Value);
-        if ($IRCCCode === false) {
+        if ($IRCCCode === '') {
             trigger_error('Invalid RemoteKey');
         }
 
