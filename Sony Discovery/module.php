@@ -95,7 +95,6 @@ class SonyDiscovery extends IPSModule
 
         foreach ($discoveredDevices as $device) {
             $instanceID   = 0;
-            $name         = $device['friendlyName'];
             $host         = $device['host'];
             $model        = $device['modelName'];
             $manufacturer = $device['manufacturer'];
@@ -108,11 +107,10 @@ class SonyDiscovery extends IPSModule
             }
 
             $config_values[] = [
-                'instanceID'   => $instanceID,
-                'name'         => $name,
                 'host'         => $host,
-                'model'        => $model,
                 'manufacturer' => $manufacturer,
+                'model'        => $model,
+                'instanceID'   => $instanceID,
                 'create'       => [
                     [
                         'moduleID'      => self::MODID_SONY_TV,
@@ -123,6 +121,20 @@ class SonyDiscovery extends IPSModule
                     ],
                 ]
             ];
+        }
+       // return $config_values;
+
+        // also the configured, but not discovered (i.e. offline) devices have to listed
+        foreach ($configuredDevices as $id){
+            if (!in_array($id, array_column($config_values, 'instanceID'), true)){
+                $config_values [] = [
+                    'host'         => IPS_GetProperty($id, 'Host'),
+                    'manufacturer' => $this->translate('unknown'),
+                    'model'        => $this->translate('unknown'),
+                    'instanceID'   => $id,
+                    'create'       => []
+                ];
+            }
         }
 
         return $config_values;
@@ -182,7 +194,6 @@ class SonyDiscovery extends IPSModule
                     $locationInfo  = $this->GetDeviceInfoFromLocation($device['LOCATION']);
                     $device_info[] = [
                         'host'         => $IPAddress,
-                        'friendlyName' => $locationInfo['friendlyName'],
                         'manufacturer' => $locationInfo['manufacturer'],
                         'modelName'    => $locationInfo['modelName']
                     ];
@@ -216,17 +227,15 @@ class SonyDiscovery extends IPSModule
     private function GetDeviceInfoFromLocation(string $location): array
     {
         $manufacturer = '';
-        $friendlyName = 'Name';
         $modelName    = 'Model';
 
         $description = $this->GetXML($location);
         $xml         = @simplexml_load_string($description);
         if ($xml) {
             $manufacturer = (string)$xml->device->manufacturer;
-            $friendlyName = (string)$xml->device->friendlyName;
             $modelName    = (string)$xml->device->modelName;
         }
-        return ['manufacturer' => $manufacturer, 'friendlyName' => $friendlyName, 'modelName' => $modelName];
+        return ['manufacturer' => $manufacturer, 'modelName' => $modelName];
     }
 
 
@@ -298,20 +307,14 @@ class SonyDiscovery extends IPSModule
                 'add'      => false,
                 'delete'   => true,
                 'sort'     => [
-                    'column'    => 'name',
+                    'column'    => 'host',
                     'direction' => 'ascending'
                 ],
                 'columns'  => [
                     [
-                        'caption' => 'ID',
-                        'name'    => 'id',
-                        'width'   => '200px',
-                        'visible' => false
-                    ],
-                    [
-                        'caption' => 'name',
-                        'name'    => 'name',
-                        'width'   => 'auto'
+                        'caption' => 'host',
+                        'name'    => 'host',
+                        'width'   => '250px'
                     ],
                     [
                         'caption' => 'manufacturer',
@@ -321,12 +324,7 @@ class SonyDiscovery extends IPSModule
                     [
                         'caption' => 'model',
                         'name'    => 'model',
-                        'width'   => '250px'
-                    ],
-                    [
-                        'caption' => 'host',
-                        'name'    => 'host',
-                        'width'   => '250px'
+                        'width'   => 'auto'
                     ]
                 ],
                 'values'   => $this->Get_ConfiguratorValues()

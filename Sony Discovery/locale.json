@@ -4,7 +4,8 @@
       "name":         "Name",
       "host":         "IP Adresse",
       "model":        "Modell",
-      "manufacturer": "Hersteller"
+      "manufacturer": "Hersteller",
+      "unknown": "unbekannt"
     }
   }
 }
