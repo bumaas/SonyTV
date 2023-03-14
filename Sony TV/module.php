@@ -42,6 +42,8 @@ class SonyTV extends IPSModule
     private const ATTR_APPLICATIONLIST      = 'ApplicationList';
     private const ATTR_UUID                 = 'UUID';
 
+    private const VAR_IDENT_INPUT_SOURCE    = 'InputSource';
+
     private const BUF_TS_LASTFAILEDGETPOWERSTATE = 'tsLastFailedGetBufferPowerState';
     private const LENGTH_OF_BOOTTIME = 90;
 
@@ -114,7 +116,7 @@ class SonyTV extends IPSModule
                 }
                 break;
 
-            case 'InputSource':
+            case self::VAR_IDENT_INPUT_SOURCE:
                 if ($Value >= 0) {
                     $this->SetValue($Ident, $Value);
                     $this->SetInputSource(GetValueFormatted($this->GetIDForIdent($Ident)));
@@ -570,7 +572,7 @@ class SonyTV extends IPSModule
         $response = $this->SendRestAPIRequest('avContent', 'getPlayingContentInfo', [], '1.0', [], [self::SYSTEM_ERROR_ILLEGAL_STATE, self::SYSTEM_ERROR_FORBIDDEN]);
 
         if ($response === false) {
-            $this->SetValue('InputSource', -1);
+            $this->SetValue(self::VAR_IDENT_INPUT_SOURCE, -1);
             return;
         }
 
@@ -583,13 +585,13 @@ class SonyTV extends IPSModule
         $json_a = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
 
         if (!isset($json_a['result'])){
-            $this->SetValue('InputSource', -1);
+            $this->SetValue(self::VAR_IDENT_INPUT_SOURCE, -1);
             return;
         }
 
         foreach ($Sources as $key => $source) {
             if ($source['uri'] === $json_a['result'][0]['uri']) {
-                $this->SetValue('InputSource', $key);
+                $this->SetValue(self::VAR_IDENT_INPUT_SOURCE, $key);
                 $this->SetValue('Application', -1);
             }
         }
@@ -881,7 +883,7 @@ class SonyTV extends IPSModule
     /**
      * @throws \JsonException
      */
-    private function GetSourceListInfo(): bool
+    public function GetSourceListInfo(): bool
     {
         $response = $this->SendRestAPIRequest('avContent', 'getSourceList', [['scheme' => 'extInput']], '1.0', [], []);
 
@@ -1168,14 +1170,14 @@ class SonyTV extends IPSModule
         $this->RegisterVariableInteger('SpeakerVolume', 'Lautstärke Lautsprecher', 'STV.Volume', 30);
         $this->RegisterVariableInteger('HeadphoneVolume', 'Lautstärke Kopfhörer', 'STV.Volume', 40);
         $this->RegisterVariableInteger('SendRemoteKey', 'Sende FB Taste', 'STV.RemoteKey', 50);
-        $this->RegisterVariableInteger('InputSource', 'Eingangsquelle', 'STV.Sources', 60);
+        $this->RegisterVariableInteger(self::VAR_IDENT_INPUT_SOURCE, 'Eingangsquelle', 'STV.Sources', 60);
         $this->RegisterVariableInteger('Application', 'Starte Applikation', 'STV.Applications', 70);
 
         // Aktivieren der Statusvariablen
         $this->EnableAction('PowerStatus');
         $this->EnableAction('AudioMute');
         $this->EnableAction('SendRemoteKey');
-        $this->EnableAction('InputSource');
+        $this->EnableAction(self::VAR_IDENT_INPUT_SOURCE);
         $this->EnableAction('Application');
         $this->EnableAction('SpeakerVolume');
         $this->EnableAction('HeadphoneVolume');

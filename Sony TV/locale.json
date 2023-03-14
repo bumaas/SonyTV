@@ -22,6 +22,8 @@
       "Update status variables": "Statusvariablen aktualisieren",
       "With 'Update application list' the installed apps are read in again.": "Mit 'Applikationsliste aktualisieren' werden die installierten Apps neu eingelesen.",
       "Update application list": "Applikationsliste aktualisieren",
+      "With 'Update Input Source list' the available Input Sources are read in again.": "Mit 'Liste der Eingangsquellen aktualisieren' werden die verfügbaren Eingangsquellen neu ermittelt.",
+      "Update Input Source list": "Liste der Eingangsquellen aktualisieren",
       "With 'Create file with API information' a support file is created in the IP-Symcon log directory. It contains a list of all functions supported by the TV set.":
       "Mit 'Datei mit API Informationen erstellen' wird im IP-Symcon Log-Verzeichnis eine Supportdatei erstellt. Sie beinhaltet eine Auflistung aller vom TV-Gerät unterstützten Funktionen.",
       "Create file with API information": "Datei mit API Informationen erstellen",

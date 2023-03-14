@@ -20,6 +20,8 @@
     {"type": "Button", "caption": "Update status variables", "onClick": "$module = new IPSModule($id); if (STV_UpdateAll($id)){echo $module->Translate('OK');} else {echo $module->Translate('Error while updating.');}"},
     {"type": "Label", "caption": "With 'Update application list' the installed apps are read in again."},
     {"type": "Button", "caption": "Update application list", "onClick": "$module = new IPSModule($id); if (STV_UpdateApplicationList($id)){echo $module->Translate('OK');} else {echo $module->Translate('Error while updating.');}"},
+    {"type": "Label", "caption": "With 'Update Input Source list' the available Input Sources are read in again."},
+    {"type": "Button", "caption": "Update Input Source list", "onClick": "$module = new IPSModule($id); if (STV_GetSourceListInfo($id)){echo $module->Translate('OK');} else {echo $module->Translate('Error while updating.');}"},
     {"type": "Label", "caption": "With 'Create file with API information' a support file is created in the IP-Symcon log directory. It contains a list of all functions supported by the TV set."},
     {"type": "Button", "caption": "Create file with API information", "onClick": "$module = new IPSModule($id); if (STV_WriteAPIInformationToFile($id, '')){echo $module->Translate('OK');} else {echo $module->Translate('Error writing the file.');}"},
     {"type": "TestCenter"}
