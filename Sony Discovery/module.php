@@ -29,8 +29,6 @@ class SonyDiscovery extends IPSModule
         //Never delete this line!
         parent::Create();
 
-        $this->RegisterPropertyInteger(self::PROPERTY_TARGET_CATEGORY_ID, 0);
-
         //we will wait until the kernel is ready
         $this->RegisterMessage(0, IPS_KERNELMESSAGE);
     }
@@ -55,23 +53,6 @@ class SonyDiscovery extends IPSModule
         if (($Message === IPS_KERNELMESSAGE) && ($Data[0] === KR_READY)) {
             $this->ApplyChanges();
         }
-    }
-
-    private function getPathOfCategory(int $categoryId): array
-    {
-        if ($categoryId === 0) {
-            return [];
-        }
-
-        $path[]   = IPS_GetName($categoryId);
-        $parentId = IPS_GetObject($categoryId)['ParentID'];
-
-        while ($parentId > 0) {
-            $path[]   = IPS_GetName($parentId);
-            $parentId = IPS_GetObject($parentId)['ParentID'];
-        }
-
-        return array_reverse($path);
     }
 
     /**
@@ -139,9 +120,8 @@ class SonyDiscovery extends IPSModule
                         'moduleID'      => self::MODID_SONY_TV,
                         'configuration' => [
                             'Host' => $host
-                        ],
-                        'location'      => $this->getPathOfCategory($this->ReadPropertyInteger(self::PROPERTY_TARGET_CATEGORY_ID))
-                    ],
+                        ]
+                    ]
                 ]
             ];
         }
@@ -336,7 +316,7 @@ class SonyDiscovery extends IPSModule
      */
     public function GetConfigurationForm(): string
     {
-        $elements = $this->formElements();
+        $elements = [];
         $actions  = $this->formActions();
         $status   = [];
 
@@ -344,22 +324,6 @@ class SonyDiscovery extends IPSModule
         $this->logDebug('FORM', $configurationForm);
         $this->logDebug('FORM', json_last_error_msg());
         return $configurationForm;
-    }
-
-    /**
-     * return form elements
-     *
-     * @return array
-     */
-    private function formElements(): array
-    {
-        return [
-            [
-                'type'    => 'SelectCategory',
-                'name'    => 'targetCategoryID',
-                'caption' => 'Target Category'
-            ]
-        ];
     }
 
     /**
