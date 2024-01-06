@@ -1,5 +1,5 @@
-<?php
-/** @noinspection PhpUnused */
+<?php /** @noinspection ALL */
+
 /** @noinspection AutoloadingIssuesInspection */
 
 declare(strict_types=1);
@@ -8,26 +8,23 @@ class SonyDiscovery extends IPSModule
 {
 
     private const PROPERTY_TARGET_CATEGORY_ID = 'targetCategoryID';
-    /**
-     * The maximum number of seconds that will be allowed for the discovery request.
-     */
-    private const WS_DISCOVERY_TIMEOUT = 2;
 
-    /**
-     * The multicast address to use in the socket for the discovery request.
-     */
-    private const WS_DISCOVERY_MULTICAST_ADDRESS = '239.255.255.250';
-
-    /**
-     * The port that will be used in the socket for the discovery request.
-     */
-    private const WS_DISCOVERY_MULTICAST_PORT = 1900;
-
-    private const WS_DISCOVERY_ST = 'urn:schemas-sony-com:service:ScalarWebAPI:1';
+    private const WS_DISCOVERY = [
+        'TIMEOUT'           => 2,
+        'MULTICAST_ADDRESS' => '239.255.255.250',
+        'MULTICAST_PORT'    => 1900,
+        'ST'                => 'urn:schemas-sony-com:service:ScalarWebAPI:1'
+    ];
 
     private const MODID_SONY_TV = '{3B91F3E3-FB8F-4E3C-A4BB-4E5C92BBCD58}';
 
-    public function Create()
+    private const MAX_RECEIVE_SIZE      = 2048;
+    private const RECEIVE_TIMEOUT_SECS  = 2;
+    private const RECEIVE_TIMEOUT_USECS = 100000;
+    private const MULTICAST_TTL         = 4;
+
+
+    public function Create(): void
     {
         //Never delete this line!
         parent::Create();
@@ -41,7 +38,7 @@ class SonyDiscovery extends IPSModule
     /**
      * Interne Funktion des SDK.
      */
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         //Never delete this line!
         parent::ApplyChanges();
@@ -53,7 +50,7 @@ class SonyDiscovery extends IPSModule
         $this->SetStatus(IS_ACTIVE);
     }
 
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data): void
     {
         if (($Message === IPS_KERNELMESSAGE) && ($Data[0] === KR_READY)) {
             $this->ApplyChanges();
@@ -83,17 +80,43 @@ class SonyDiscovery extends IPSModule
      * @return array configlist all devices
      * @throws \JsonException
      */
-    private function Get_ConfiguratorValues(): array
+    private function getDeviceValues(): array
+    {
+        $configuredDevices   = $this->getConfiguredDevices();
+        $discoveredDevices   = $this->getDiscoveredDevices();
+        $configurationValues = $this->getDeviceConfig($discoveredDevices, $configuredDevices);
+
+        // Check configured, but not discovered (i.e. offline) devices
+        $this->checkConfiguredDevices($configuredDevices, $configurationValues);
+
+        return $configurationValues;
+    }
+
+    private function getConfiguredDevices(): array
+    {
+        $devices = IPS_GetInstanceListByModuleID(self::MODID_SONY_TV);
+        $message = json_encode($devices, JSON_THROW_ON_ERROR);
+        $this->logDebug('Configured Devices', $message);
+        return $devices;
+    }
+
+    private function getDiscoveredDevices(): array
+    {
+        $devices = $this->DiscoverDevices();
+        $message = json_encode($devices, JSON_THROW_ON_ERROR);
+        $this->logDebug('Discovered Devices', $message);
+        return $devices;
+    }
+
+    private function logDebug(string $title, string $message): void
+    {
+        $this->SendDebug($title, $message, 0);
+    }
+
+    private function getDeviceConfig($devices, $configuredDevices): array
     {
         $config_values = [];
-
-        $configuredDevices = IPS_GetInstanceListByModuleID(self::MODID_SONY_TV);
-        $this->SendDebug('configured devices', json_encode($configuredDevices, JSON_THROW_ON_ERROR), 0);
-
-        $discoveredDevices = $this->DiscoverDevices();
-        $this->SendDebug('discovered devices', json_encode($discoveredDevices, JSON_THROW_ON_ERROR), 0);
-
-        foreach ($discoveredDevices as $device) {
+        foreach ($devices as $device) {
             $instanceID   = 0;
             $host         = $device['host'];
             $model        = $device['modelName'];
@@ -122,11 +145,13 @@ class SonyDiscovery extends IPSModule
                 ]
             ];
         }
-       // return $config_values;
+        return $config_values;
+    }
 
-        // also the configured, but not discovered (i.e. offline) devices have to listed
-        foreach ($configuredDevices as $id){
-            if (!in_array($id, array_column($config_values, 'instanceID'), true)){
+    private function checkConfiguredDevices($configuredDevices, &$config_values): void
+    {
+        foreach ($configuredDevices as $id) {
+            if (!in_array($id, array_column($config_values, 'instanceID'), true)) {
                 $config_values [] = [
                     'host'         => IPS_GetProperty($id, 'Host'),
                     'manufacturer' => $this->translate('unknown'),
@@ -136,8 +161,6 @@ class SonyDiscovery extends IPSModule
                 ];
             }
         }
-
-        return $config_values;
     }
 
 
@@ -146,96 +169,145 @@ class SonyDiscovery extends IPSModule
      */
     private function DiscoverDevices(): array
     {
-        // BUILD MESSAGE
-        $message  = [
-            'M-SEARCH * HTTP/1.1',
-            'HOST: 239.255.255.250:1900',
-            'MAN: "ssdp:discover"',
-            'MX: 2',                    // maximum amount of seconds it takes for a device to respond
-            'ST: ' . self::WS_DISCOVERY_ST       //This defines the devices we would like to discover on the network.
-        ];
-        $SendData = implode("\r\n", $message) . "\r\n\r\n";
+        $SendData = $this->buildMessage();
+        $socket   = $this->createAndConfigureSocket();
 
-        $socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
-        $this->SendDebug('----' . __FUNCTION__, 'ST: ' . self::WS_DISCOVERY_ST, 0);
         if (!$socket) {
             return [];
         }
 
-        socket_set_option($socket, SOL_SOCKET, SO_BROADCAST, true);
-        socket_set_option($socket, SOL_SOCKET, SO_REUSEADDR, true);
-        socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 2, 'usec' => 100000]);
-        socket_set_option($socket, IPPROTO_IP, IP_MULTICAST_TTL, 4);
-
-        $this->SendDebug('Search', $SendData, 0);
-        if (@socket_sendto($socket, $SendData, strlen($SendData), 0, self::WS_DISCOVERY_MULTICAST_ADDRESS, self::WS_DISCOVERY_MULTICAST_PORT)
-            === false) {
+        $this->logDebug('Search', $SendData);
+        if ($this->sendDataToSocket($socket, $SendData) === false) {
             return [];
         }
 
-        // RECEIVE RESPONSE
-        $device_info      = [];
-        $IPAddress        = '';
-        $Port             = 0;
-        $discoveryTimeout = time() + self::WS_DISCOVERY_TIMEOUT;
-
-        do {
-            $buf   = null;
-            $bytes = @socket_recvfrom($socket, $buf, 2048, 0, $IPAddress, $Port);
-            if ((bool)$bytes === false) {
-                break;
-            }
-            $this->SendDebug(sprintf('Receive (%s:%s)', $IPAddress, $Port), (string)$buf, 0);
-
-            if (!is_null($buf)) {
-                $device = $this->parseHeader($buf);
-                $this->SendDebug('header', json_encode($device, JSON_THROW_ON_ERROR), 0);
-                if (isset($device['SERVER']) && (strpos($device['SERVER'], 'Fedora') >= 0)) {
-                    $locationInfo  = $this->GetDeviceInfoFromLocation($device['LOCATION']);
-                    $device_info[] = [
-                        'host'         => $IPAddress,
-                        'manufacturer' => $locationInfo['manufacturer'],
-                        'modelName'    => $locationInfo['modelName']
-                    ];
-                }
-            }
-        } while (time() < $discoveryTimeout);
+        $device_info = $this->receiveDevicesInfo($socket);
+        //print_r($device_info);
 
         // CLOSE SOCKET
         socket_close($socket);
 
         // zum Test wird der Eintrag verdoppelt und eine abweichende IP eingesetzt
-        //$denon_info[]=$denon_info[0];
-        //$denon_info[1]['host']='192.168.178.34';
+        //$device_info[]=$device_info[0];
+        //$device_info[1]['host']='192.168.178.34';
 
         return $device_info;
     }
 
-    private function parseHeader(string $Data): array
+    // Extracted method for building message
+    private function buildMessage(): string
     {
-        $Lines = explode("\r\n", $Data);
-        array_shift($Lines);
-        array_pop($Lines);
-        $Header = [];
-        foreach ($Lines as $Line) {
-            $line_array                                         = explode(':', $Line);
-            $Header[strtoupper(trim(array_shift($line_array)))] = trim(implode(':', $line_array));
-        }
-        return $Header;
+        $message = [
+            'M-SEARCH * HTTP/1.1',
+            'HOST: ' . self::WS_DISCOVERY['MULTICAST_ADDRESS'] . ':' . self::WS_DISCOVERY['MULTICAST_PORT'],
+            'MAN: "ssdp:discover"',
+            'MX: ' . self::WS_DISCOVERY['TIMEOUT'],
+            'ST: ' . self::WS_DISCOVERY['ST']
+        ];
+        return implode("\r\n", $message) . "\r\n\r\n";
     }
 
-    private function GetDeviceInfoFromLocation(string $location): array
+    // Extracted method for creating and configuring socket
+    private function createAndConfigureSocket()
     {
-        $manufacturer = '';
-        $modelName    = 'Model';
-
-        $description = $this->GetXML($location);
-        $xml         = @simplexml_load_string($description);
-        if ($xml) {
-            $manufacturer = (string)$xml->device->manufacturer;
-            $modelName    = (string)$xml->device->modelName;
+        $socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+        if ($socket) {
+            $this->logDebug('----' . __FUNCTION__, 'ST: ' . self::WS_DISCOVERY['ST']);
+            socket_set_option($socket, SOL_SOCKET, SO_BROADCAST, true);
+            socket_set_option($socket, SOL_SOCKET, SO_REUSEADDR, true);
+            socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => self::RECEIVE_TIMEOUT_SECS, 'usec' => self::RECEIVE_TIMEOUT_USECS]);
+            socket_set_option($socket, IPPROTO_IP, IP_MULTICAST_TTL, self::MULTICAST_TTL);
         }
-        return ['manufacturer' => $manufacturer, 'modelName' => $modelName];
+        return $socket;
+    }
+
+    private function sendDataToSocket($socket, string $SendData): bool
+    {
+        return (bool)@socket_sendto(
+            $socket,
+            $SendData,
+            strlen($SendData),
+            0,
+            self::WS_DISCOVERY['MULTICAST_ADDRESS'],
+            self::WS_DISCOVERY['MULTICAST_PORT']
+        );
+    }
+
+    private function receiveDevicesInfo($socket): array
+    {
+        $devicesInfo  = [];
+        $ipAddress    = '';
+        $port         = 0;
+        $timeoutLimit = time() + self::WS_DISCOVERY['TIMEOUT'];
+
+        // Loop until the timeout limit
+        do {
+            $buffer        = null;
+            $receivedBytes = @socket_recvfrom($socket, $buffer, self::MAX_RECEIVE_SIZE, 0, $ipAddress, $port);
+
+            // Check if bytes are received, break the loop if false.
+            if ((bool)$receivedBytes === false) {
+                break;
+            }
+
+            $this->logDebug(sprintf('Receive (%s:%s)', $ipAddress, $port), (string)$buffer);
+
+            if (!is_null($buffer)) {
+                $device = $this->parseHeaderData($buffer);
+                $this->logDebug('header', json_encode($device, JSON_THROW_ON_ERROR));
+
+                // Check if Server key exists and Fedora is found in its value
+                if (isset($device['SERVER']) && (strpos($device['SERVER'], 'Fedora') !== false)) {
+                    $locationInfo = $this->getDeviceInfoFromLocation($device['LOCATION']);
+                    // Add to existing device info array
+                    $devicesInfo[] = [
+                        'host'         => $ipAddress,
+                        'manufacturer' => $locationInfo['manufacturer'],
+                        'modelName'    => $locationInfo['modelName']
+                    ];
+                }
+            }
+        } while (time() < $timeoutLimit);
+
+        return $devicesInfo;
+    }
+
+    /**
+     * Parses header data and returns an array with parsed values.
+     *
+     * @param string $headerData The header data to parse.
+     *
+     * @return array The parsed header data as an associative array, where the keys are the uppercase header names
+     *   and the values are the trimmed header values.
+     *
+     */
+    private function parseHeaderData(string $headerData): array
+    {
+        $headerLines = explode("\r\n", $headerData);
+        array_shift($headerLines);
+        array_pop($headerLines);
+        $parsedHeaderData = [];
+        foreach ($headerLines as $headerLine) {
+            $headerLineParts                                                   = explode(':', $headerLine);
+            $parsedHeaderData[strtoupper(trim(array_shift($headerLineParts)))] = trim(implode(':', $headerLineParts));
+        }
+        return $parsedHeaderData;
+    }
+
+    private function getDeviceInfoFromLocation(string $location): array
+    {
+        // default device info
+        $deviceInfo = ['manufacturer' => '', 'modelName' => 'Model'];
+
+        $deviceDescriptionXML = $this->getXML($location);
+        $deviceInfoXML        = @simplexml_load_string($deviceDescriptionXML);
+
+        if ($deviceInfoXML) {
+            $deviceInfo['manufacturer'] = (string)$deviceInfoXML->device->manufacturer;
+            $deviceInfo['modelName']    = (string)$deviceInfoXML->device->modelName;
+        }
+
+        return $deviceInfo;
     }
 
 
@@ -247,7 +319,7 @@ class SonyDiscovery extends IPSModule
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         $status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);   //get status code
         $result      = curl_exec($ch);
-        $this->SendDebug('Get XML:', sprintf('URL: %s, Status: %s, result: %s', $url, $status_code, $result), 0);
+        $this->logDebug('Get XML:', sprintf('URL: %s, Status: %s, result: %s', $url, $status_code, $result));
         curl_close($ch);
         return $result;
     }
@@ -264,15 +336,14 @@ class SonyDiscovery extends IPSModule
      */
     public function GetConfigurationForm(): string
     {
-        // return current form
-        $Form = json_encode([
-                                'elements' => $this->FormElements(),
-                                'actions'  => $this->FormActions(),
-                                'status'   => []
-                            ], JSON_THROW_ON_ERROR);
-        $this->SendDebug('FORM', $Form, 0);
-        $this->SendDebug('FORM', json_last_error_msg(), 0);
-        return $Form;
+        $elements = $this->formElements();
+        $actions  = $this->formActions();
+        $status   = [];
+
+        $configurationForm = json_encode(compact('elements', 'actions', 'status'), JSON_THROW_ON_ERROR);
+        $this->logDebug('FORM', $configurationForm);
+        $this->logDebug('FORM', json_last_error_msg());
+        return $configurationForm;
     }
 
     /**
@@ -280,7 +351,7 @@ class SonyDiscovery extends IPSModule
      *
      * @return array
      */
-    private function FormElements(): array
+    private function formElements(): array
     {
         return [
             [
@@ -297,7 +368,7 @@ class SonyDiscovery extends IPSModule
      * @return array
      * @throws \JsonException
      */
-    private function FormActions(): array
+    private function formActions(): array
     {
         return [
             [
@@ -327,7 +398,7 @@ class SonyDiscovery extends IPSModule
                         'width'   => 'auto'
                     ]
                 ],
-                'values'   => $this->Get_ConfiguratorValues()
+                'values'   => $this->getDeviceValues()
             ]
         ];
     }

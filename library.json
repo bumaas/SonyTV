@@ -4,9 +4,9 @@
   "name": "Sony TV",
   "url": "",
   "compatibility": {
-    "version": "6.0"
+    "version": "7.0"
   },
   "version": "2.00",
-  "build": 14,
-  "date": 1678878237
+  "build": 15,
+  "date": 1704558463
 }

@@ -51,6 +51,12 @@ class SonyTV extends IPSModule
     private const SYSTEM_ERROR_FORBIDDEN     = 403;
     private const HTTP_ERROR_NOT_FOUND       = 404;
 
+    private const PROFILE_APPLICATIONS = 'STV.Applications';
+    private const PROFILE_POWERSTATUS = 'STV.PowerStatus';
+    private const PROFILE_VOLUME = 'STV.Volume';
+    private const PROFILE_REMOTEKEY = 'STV.RemoteKey';
+    private const PROFILE_SOURCES = 'STV.Sources';
+
     // Überschreibt die interne IPS_Create($id) Funktion
     public function Create()
     {
@@ -61,6 +67,17 @@ class SonyTV extends IPSModule
         $this->RegisterAttributes();
 
         $this->RegisterTimer('Update', 0, 'STV_UpdateAll(' . $this->InstanceID . ');');
+    }
+
+    public function Destroy()
+    {
+        $this->UnregisterProfile(self::PROFILE_APPLICATIONS);
+        $this->UnregisterProfile(self::PROFILE_POWERSTATUS);
+        $this->UnregisterProfile(self::PROFILE_VOLUME);
+        $this->UnregisterProfile(self::PROFILE_REMOTEKEY);
+        $this->UnregisterProfile(self::PROFILE_SOURCES);
+
+        return parent::Destroy();
     }
 
     /**
@@ -155,6 +172,8 @@ class SonyTV extends IPSModule
             default:
                 trigger_error('Unexpected ident: ' . $Ident);
         }
+
+        return true;
     }
 
 
@@ -399,7 +418,7 @@ class SonyTV extends IPSModule
 
         $this->WriteAttributeString(self::ATTR_APPLICATIONLIST, $response);
 
-        $this->WriteListProfile('STV.Applications', $ApplicationList, 'title');
+        $this->WriteListProfile(self::PROFILE_APPLICATIONS, $ApplicationList, 'title');
 
         $this->Logger_Dbg(__FUNCTION__, 'ApplicationList: ' . json_encode($response, JSON_THROW_ON_ERROR));
 
@@ -1144,9 +1163,9 @@ class SonyTV extends IPSModule
      */
     private function RegisterVariables(): void
     {
-        if (!IPS_VariableProfileExists('STV.PowerStatus')) {
+        if (!IPS_VariableProfileExists(self::PROFILE_POWERSTATUS)) {
             $this->CreateProfileIntegerAss(
-                'STV.PowerStatus', 'Power', '', '', 0, [
+                self::PROFILE_POWERSTATUS, 'Power', '', '', 0, [
                                      [0, 'Ausgeschaltet', '', -1],
                                      [1, 'Standby', '', -1],
                                      [2, 'Eingeschaltet', '', -1]
@@ -1154,17 +1173,17 @@ class SonyTV extends IPSModule
             );
         }
 
-        if (!IPS_VariableProfileExists('STV.RemoteKey')) {
-            $this->WriteListProfile('STV.RemoteKey', '[]');
+        if (!IPS_VariableProfileExists(self::PROFILE_REMOTEKEY)) {
+            $this->WriteListProfile(self::PROFILE_REMOTEKEY, '[]');
         }
-        if (!IPS_VariableProfileExists('STV.Sources')) {
-            $this->WriteListProfile('STV.Sources', '[]');
+        if (!IPS_VariableProfileExists(self::PROFILE_SOURCES)) {
+            $this->WriteListProfile(self::PROFILE_SOURCES, '[]');
         }
-        if (!IPS_VariableProfileExists('STV.Applications')) {
-            $this->WriteListProfile('STV.Applications', '[]');
+        if (!IPS_VariableProfileExists(self::PROFILE_APPLICATIONS)) {
+            $this->WriteListProfile(self::PROFILE_APPLICATIONS, '[]');
         }
 
-        if (!IPS_VariableProfileExists('STV.Volume')) {
+        if (!IPS_VariableProfileExists(self::PROFILE_VOLUME)) {
             $this->CreateProfileInteger(
                 'STV.Volume',
                 'Intensity',
@@ -1177,13 +1196,13 @@ class SonyTV extends IPSModule
             );
         }
 
-        $this->RegisterVariableInteger('PowerStatus', 'Status', 'STV.PowerStatus', 10);
+        $this->RegisterVariableInteger('PowerStatus', 'Status', self::PROFILE_POWERSTATUS, 10);
         $this->RegisterVariableBoolean('AudioMute', 'Mute', '~Switch', 20);
-        $this->RegisterVariableInteger('SpeakerVolume', 'Lautstärke Lautsprecher', 'STV.Volume', 30);
-        $this->RegisterVariableInteger('HeadphoneVolume', 'Lautstärke Kopfhörer', 'STV.Volume', 40);
-        $this->RegisterVariableInteger('SendRemoteKey', 'Sende FB Taste', 'STV.RemoteKey', 50);
-        $this->RegisterVariableInteger(self::VAR_IDENT_INPUT_SOURCE, 'Eingangsquelle', 'STV.Sources', 60);
-        $this->RegisterVariableInteger('Application', 'Starte Applikation', 'STV.Applications', 70);
+        $this->RegisterVariableInteger('SpeakerVolume', 'Lautstärke Lautsprecher', self::PROFILE_VOLUME, 30);
+        $this->RegisterVariableInteger('HeadphoneVolume', 'Lautstärke Kopfhörer', self::PROFILE_VOLUME, 40);
+        $this->RegisterVariableInteger('SendRemoteKey', 'Sende FB Taste', self::PROFILE_REMOTEKEY, 50);
+        $this->RegisterVariableInteger(self::VAR_IDENT_INPUT_SOURCE, 'Eingangsquelle', self::PROFILE_SOURCES, 60);
+        $this->RegisterVariableInteger('Application', 'Starte Applikation', self::PROFILE_APPLICATIONS, 70);
 
         // Aktivieren der Statusvariablen
         $this->EnableAction('PowerStatus');
@@ -1246,6 +1265,37 @@ class SonyTV extends IPSModule
         if ($this->ReadPropertyBoolean('WriteDebugInformationToLogfile')) {
             $this->LogMessage(sprintf('%s: %s', $message, $data), KL_DEBUG);
         }
+    }
+
+
+    private function UnregisterProfile(string $Name): void
+    {
+        if (!IPS_VariableProfileExists($Name)) {
+            return;
+        }
+
+        foreach (IPS_GetVariableList() as $VarID) {
+            if (IPS_GetParent($VarID) == $this->InstanceID) {
+                continue;
+            }
+            if (IPS_GetVariable($VarID)['VariableCustomProfile'] == $Name) {
+                return;
+            }
+            if (IPS_GetVariable($VarID)['VariableProfile'] == $Name) {
+                return;
+            }
+        }
+
+        foreach (IPS_GetMediaListByType(MEDIATYPE_CHART) as $mediaID) {
+            $content = json_decode(base64_decode(IPS_GetMediaContent($mediaID)), true);
+            foreach ($content['axes'] as $axis){
+                if ($axis['profile' === $Name]){
+                    return;
+                }
+            }
+        }
+
+        IPS_DeleteVariableProfile($Name);
     }
 
 }
