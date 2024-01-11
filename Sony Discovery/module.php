@@ -63,10 +63,13 @@ class SonyDiscovery extends IPSModule
      */
     private function getDeviceValues(): array
     {
-        $configuredDevices   = $this->getConfiguredDevices();
-        $discoveredDevices   = $this->getDiscoveredDevices();
-        $configurationValues = $this->getDeviceConfig($discoveredDevices, $configuredDevices);
+        $configuredDevices = $this->getConfiguredDevices();
+        $this->logDevices('Configured Devices', $configuredDevices);
 
+        $discoveredDevices = $this->getDiscoveredDevices();
+        $this->logDevices('Discovered Devices', $discoveredDevices);
+
+        $configurationValues = $this->getDeviceConfig($discoveredDevices, $configuredDevices);
         // Check configured, but not discovered (i.e. offline) devices
         $this->checkConfiguredDevices($configuredDevices, $configurationValues);
 
@@ -75,18 +78,18 @@ class SonyDiscovery extends IPSModule
 
     private function getConfiguredDevices(): array
     {
-        $devices = IPS_GetInstanceListByModuleID(self::MODID_SONY_TV);
-        $message = json_encode($devices, JSON_THROW_ON_ERROR);
-        $this->logDebug('Configured Devices', $message);
-        return $devices;
+        return IPS_GetInstanceListByModuleID(self::MODID_SONY_TV);
     }
 
     private function getDiscoveredDevices(): array
     {
-        $devices = $this->DiscoverDevices();
+        return $this->DiscoverDevices();
+    }
+
+    private function logDevices(string $title, array $devices): void
+    {
         $message = json_encode($devices, JSON_THROW_ON_ERROR);
-        $this->logDebug('Discovered Devices', $message);
-        return $devices;
+        $this->logDebug($title, $message);
     }
 
     private function logDebug(string $title, string $message): void
@@ -164,7 +167,6 @@ class SonyDiscovery extends IPSModule
         $device_info = $this->receiveDevicesInfo($socket);
         //print_r($device_info);
 
-        // CLOSE SOCKET
         socket_close($socket);
 
         // zum Test wird der Eintrag verdoppelt und eine abweichende IP eingesetzt
@@ -216,18 +218,15 @@ class SonyDiscovery extends IPSModule
     private function receiveDevicesInfo($socket): array
     {
         $devicesInfo  = [];
-        $ipAddress    = '';
-        $port         = 0;
         $timeoutLimit = time() + self::WS_DISCOVERY['TIMEOUT'];
 
         // Loop until the timeout limit
         do {
             $buffer        = null;
-            $receivedBytes = @socket_recvfrom($socket, $buffer, self::MAX_RECEIVE_SIZE, 0, $ipAddress, $port);
-
-            // Check if bytes are received, break the loop if false.
-            if ((bool)$receivedBytes === false) {
-                break;
+            $ipAddress    = '';
+            $port         = 0;
+            if (@socket_recvfrom($socket, $buffer, self::MAX_RECEIVE_SIZE, 0, $ipAddress, $port) === false) {
+                continue;
             }
 
             $this->logDebug(sprintf('Receive (%s:%s)', $ipAddress, $port), (string)$buffer);
