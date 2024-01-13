@@ -234,29 +234,24 @@ class SonyTV extends IPSModule
      */
     public function SetPowerStatus(bool $Status): void
     {
-        $PowerStatus = 0;
-        $ret = $this->SendRestAPIRequest('system', 'setPowerStatus', [['status' => $Status]], '1.0', [28], []);
+        $response = $this->SendRestAPIRequest('system', 'setPowerStatus', [['status' => $Status]], '1.0', [28], []);
 
-        if ($ret !== false) {
-            $PowerStatus = $this->handlePowerStatusResponse($ret);
+        if ($this->handleAndValidateResponse($response)) {
+            $this->processSuccessfulResponse();
+            return;
         }
-
-        $this->SetValue('PowerStatus', $PowerStatus);
+        $this->updatePowerStatusOnFailure();
     }
 
-    private function handlePowerStatusResponse($response): int
+    private function processSuccessfulResponse(): void
     {
-        $PowerStatus = 0;
+        sleep(2); // pause until Sony processes the command
+        $this->GetPowerStatus();
+    }
 
-        $jsonResponse = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
-        if (isset($jsonResponse['result'])) {
-            sleep(2); // wait until command processed by Sony
-            $this->GetPowerStatus();
-        } else {
-            trigger_error('Error: ' . json_encode($jsonResponse['error'], JSON_THROW_ON_ERROR));
-        }
-
-        return $PowerStatus;
+    private function updatePowerStatusOnFailure(): void
+    {
+        $this->SetValue('PowerStatus', 0);
     }
 
     /**
