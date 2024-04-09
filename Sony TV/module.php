@@ -27,15 +27,15 @@ if (function_exists('IPSUtils_Include')) {
     IPSUtils_Include('IPSLogger.inc.php', 'IPSLibrary::app::core::IPSLogger');
 }
 
-class SonyTV extends IPSModule
-{
+trait SonyConstants {
     private const STATUS_INST_IP_IS_EMPTY   = 202;
     private const STATUS_INST_IP_IS_INVALID = 204; //IP-Adresse ist ungültig
 
     private const MAX_PROFILE_ASSOCIATIONS = 128;
 
-    private const PROP_HOST = 'Host';
-    private const PROP_PSK  = 'PSK';
+    private const PROP_HOST            = 'Host';
+    private const PROP_PSK             = 'PSK';
+    private const PROP_UPDATE_INTERVAL = 'UpdateInterval';
 
     private const ATTR_REMOTECONTROLLERINFO = 'RemoteControllerInfo';
     private const ATTR_SOURCELIST           = 'SourceList';
@@ -43,9 +43,18 @@ class SonyTV extends IPSModule
     private const ATTR_UUID                 = 'UUID';
 
     private const VAR_IDENT_INPUT_SOURCE = 'InputSource';
+    private const VAR_IDENT_POWER_STATUS = 'PowerStatus';
+    private const VAR_IDENT_APPLICATION = 'Application';
+    private const VAR_IDENT_SEND_REMOTE_KEY = 'SendRemoteKey';
+    private const VAR_IDENT_AUDIO_MUTE = 'AudioMute';
+    private const VAR_IDENT_SPEAKER_VOLUME = 'SpeakerVolume';
+    private const VAR_IDENT_HEADPHONE_VOLUME = 'HeadphoneVolume';
 
-    private const BUF_TS_LASTFAILEDGETPOWERSTATE = 'tsLastFailedGetBufferPowerState';
-    private const LENGTH_OF_BOOTTIME             = 90;
+    private const TIMER_UPDATE           = 'STV_UpdateTimer';
+
+
+    private const BUFFER_TIMESTAMP_LASTPOWERSTATUSFAIL = 'tsLastFailedGetBufferPowerState';
+    private const LENGTH_OF_BOOTTIME                   = 90;
 
     private const SYSTEM_ERROR_ILLEGAL_STATE = 7;
     private const SYSTEM_ERROR_FORBIDDEN     = 403;
@@ -57,6 +66,15 @@ class SonyTV extends IPSModule
     private const PROFILE_REMOTEKEY    = 'STV.RemoteKey';
     private const PROFILE_SOURCES      = 'STV.Sources';
 
+    private const STATUS_OFF     = 0;
+    private const STATUS_STANDBY = 1;
+    private const STATUS_ACTIVE  = 2;
+}
+
+class SonyTV extends IPSModule
+{
+    use SonyConstants;
+
     // Überschreibt die interne IPS_Create($id) Funktion
     public function Create(): void
     {
@@ -66,7 +84,7 @@ class SonyTV extends IPSModule
         $this->RegisterProperties();
         $this->RegisterAttributes();
 
-        $this->RegisterTimer('Update', 0, 'STV_UpdateAll(' . $this->InstanceID . ');');
+        $this->RegisterTimer(self::TIMER_UPDATE, 0, 'STV_UpdateAll(' . $this->InstanceID . ');');
     }
 
     public function Destroy(): void
@@ -88,8 +106,8 @@ class SonyTV extends IPSModule
         //Never delete this line!
         parent::ApplyChanges();
 
-        $TimerInterval = $this->ReadPropertyInteger('UpdateInterval');
-        $this->SetTimerInterval('Update', $TimerInterval * 1000);
+        $TimerInterval = $this->ReadPropertyInteger(self::PROP_UPDATE_INTERVAL);
+        $this->SetTimerInterval(self::TIMER_UPDATE, $TimerInterval * 1000);
         $this->Logger_Inf('TimerInterval set to ' . $TimerInterval . 's.');
 
         $this->RegisterVariables();
@@ -120,40 +138,40 @@ class SonyTV extends IPSModule
     public function RequestAction($Ident, $Value): bool
     {
         switch ($Ident) {
-            case 'PowerStatus':
-                $this->SetPowerStatus($Value === 2);
+            case self::VAR_IDENT_POWER_STATUS:
+                $this->SetPowerStatus($Value === self::STATUS_ACTIVE);
                 break;
 
-            case 'SendRemoteKey':
+            case self::VAR_IDENT_SEND_REMOTE_KEY:
                 if ($Value >= 0) {
-                    $this->SetValue($Ident, $Value);
-                    $this->SendRemoteKey(GetValueFormatted($this->GetIDForIdent($Ident)));
+                    $this->SetValue(self::VAR_IDENT_SEND_REMOTE_KEY, $Value);
+                    $this->SendRemoteKey(GetValueFormatted($this->GetIDForIdent(self::VAR_IDENT_SEND_REMOTE_KEY)));
                 }
                 break;
 
             case self::VAR_IDENT_INPUT_SOURCE:
                 if ($Value >= 0) {
-                    $this->SetValue($Ident, $Value);
+                    $this->SetValue(self::VAR_IDENT_INPUT_SOURCE, $Value);
                     $this->SetInputSource(GetValueFormatted($this->GetIDForIdent($Ident)));
                 }
                 break;
 
-            case 'Application':
+            case self::VAR_IDENT_APPLICATION:
                 if ($Value >= 0) {
-                    $this->SetValue($Ident, $Value);
+                    $this->SetValue(self::VAR_IDENT_APPLICATION, $Value);
                     $this->StartApplication(htmlentities(GetValueFormatted($this->GetIDForIdent($Ident))));
                 }
                 break;
 
-            case 'AudioMute':
+            case self::VAR_IDENT_AUDIO_MUTE:
                 $this->SetAudioMute($Value);
                 break;
 
-            case 'SpeakerVolume':
+            case self::VAR_IDENT_SPEAKER_VOLUME:
                 $this->SetSpeakerVolume($Value);
                 break;
 
-            case 'HeadphoneVolume':
+            case self::VAR_IDENT_HEADPHONE_VOLUME:
                 $this->SetHeadphoneVolume($Value);
                 break;
 
@@ -171,7 +189,7 @@ class SonyTV extends IPSModule
 
     private function executeAndUpdateMsg(callable $callback, string $errorMessage): void
     {
-        if ($callback()){
+        if ($callback()) {
             $this->MsgBox($this->Translate('OK'));
         } else {
             $this->MsgBox($this->Translate($errorMessage));
@@ -187,16 +205,22 @@ class SonyTV extends IPSModule
      */
     public function UpdateAll(): bool
     {
+        $this->Logger_Dbg(__FUNCTION__, 'Start ...');
         // IP-Symcon Kernel ready?
         if (!$this->isKernelReady()) {
             return false;
         }
 
-        if ($this->ReadPropertyString(self::PROP_HOST) !== '') {
+        if ($this->ReadPropertyString(self::PROP_HOST) === '') {
             return false;
         }
 
-        $PowerStatus = $this->GetPowerStatus();
+        $PowerStatus = $this->getPowerStatus();
+
+        if (is_null($PowerStatus)){
+            return false;
+        }
+
         return $this->handlePowerStatus($PowerStatus);
     }
 
@@ -213,15 +237,13 @@ class SonyTV extends IPSModule
 
     private function handlePowerStatus(int $PowerStatus): bool
     {
-        $this->Logger_Dbg(__FUNCTION__, 'PowerStatus: ' . $PowerStatus);
-
         switch ($PowerStatus) {
-            case 0:
-            case 1:
-                return $PowerStatus > 0;
+            case self::STATUS_OFF:
+            case self::STATUS_STANDBY:
+                return $PowerStatus > self::STATUS_OFF;
             case 2:
                 $this->SetStatus(IS_ACTIVE);
-                $this->GetVolume();
+                $this->getVolumes();
                 $this->GetInputSource();
                 return true;
             default:
@@ -229,6 +251,7 @@ class SonyTV extends IPSModule
                 return false;
         }
     }
+
     /**
      * @throws \JsonException
      */
@@ -246,12 +269,13 @@ class SonyTV extends IPSModule
     private function processSuccessfulResponse(): void
     {
         sleep(2); // pause until Sony processes the command
-        $this->GetPowerStatus();
+        $this->getPowerStatus();
     }
 
     private function updatePowerStatusOnFailure(): void
     {
-        $this->SetValue('PowerStatus', 0);
+        $this->Logger_Dbg(__FUNCTION__, sprintf('PowerStatus: %s', 0));
+        $this->SetValue(self::VAR_IDENT_POWER_STATUS, 0);
     }
 
     /**
@@ -270,13 +294,13 @@ class SonyTV extends IPSModule
             return false;
         }
 
-        $uri = $this->GetUriOfSource($Sources, $source);
+        $uri      = $this->GetUriOfSource($Sources, $source);
         $response = $this->SendRestAPIRequest('avContent', 'setPlayContent', [['uri' => $uri]], '1.0', [], []);
 
         return $this->handleAndValidateResponse($response);
     }
 
-    private function parseAndValidateSources(): array | false
+    private function parseAndValidateSources(): array|false
     {
         $Sources = json_decode($this->ReadAttributeString(self::ATTR_SOURCELIST), true, 512, JSON_THROW_ON_ERROR);
         if ($Sources === null) {
@@ -316,7 +340,7 @@ class SonyTV extends IPSModule
         $response = $this->SendRestAPIRequest('audio', 'setAudioMute', [['status' => $status]], '1.0', [], []);
 
         if ($this->isResponseValid($response)) {
-            $this->SetValue('AudioMute', $status);
+            $this->SetValue(self::VAR_IDENT_AUDIO_MUTE, $status);
             return true;
         }
 
@@ -352,7 +376,7 @@ class SonyTV extends IPSModule
         $response = $this->SendRestAPIRequest('audio', 'setAudioVolume', [['target' => 'speaker', 'volume' => (string)$volume]], '1.0', [], []);
 
         if ($this->isResponseValid($response)) {
-            $this->SetValue('SpeakerVolume', $volume);
+            $this->SetValue(self::VAR_IDENT_SPEAKER_VOLUME, $volume);
             return true;
         }
 
@@ -375,7 +399,7 @@ class SonyTV extends IPSModule
         );
 
         if ($this->isResponseValid($response)) {
-            $this->SetValue('HeadphoneVolume', $volume);
+            $this->SetValue(self::VAR_IDENT_HEADPHONE_VOLUME, $volume);
             return true;
         }
 
@@ -398,7 +422,7 @@ class SonyTV extends IPSModule
             trigger_error('Application List not yet set. Please update the application list.');
             return false;
         }
-        $uri = $this->GetUriOfSource($Applications['result'][0], $application);
+        $uri      = $this->GetUriOfSource($Applications['result'][0], $application);
         $response = $this->SendRestAPIRequest('appControl', 'setActiveApp', [['uri' => $uri]], '1.0', [], []);
         return $this->isResponseValid($response);
     }
@@ -505,35 +529,30 @@ class SonyTV extends IPSModule
     /**
      * @throws \JsonException
      */
-    private function GetVolume(): void
+    private function getVolumes(): void
     {
         if (IPS_GetInstance($this->InstanceID)['InstanceStatus'] !== IS_ACTIVE) {
             return;
         }
 
-        $response = $this->SendRestAPIRequest('audio', 'getVolumeInformation', [], '1.0', [], []);
+        $jsonResponse = $this->SendRestAPIRequest('audio', 'getVolumeInformation', [], '1.0', [], []);
 
-        if ($response === false) {
+        if (!$this->isResponseValid($jsonResponse)) {
             return;
         }
 
-        $json_a = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+        $response = json_decode($jsonResponse, true, 512, JSON_THROW_ON_ERROR);
 
-        if (!isset($json_a['result'])) {
-            trigger_error('Unexpected return: ' . $response);
-            return;
-        }
-
-        foreach ($json_a['result'][0] as $target) {
+        foreach ($response['result'][0] as $target) {
             switch ($target['target']) {
                 case 'speaker':
-                    $this->SetValue('AudioMute', $target['mute']);
-                    $this->SetValue('SpeakerVolume', $target['volume']);
+                    $this->SetValue(self::VAR_IDENT_AUDIO_MUTE, $target['mute']);
+                    $this->SetValue(self::VAR_IDENT_SPEAKER_VOLUME, $target['volume']);
                     break;
 
                 case 'headphone':
-                    $this->SetValue('AudioMute', $target['mute']);
-                    $this->SetValue('HeadphoneVolume', $target['volume']);
+                    $this->SetValue(self::VAR_IDENT_AUDIO_MUTE, $target['mute']);
+                    $this->SetValue(self::VAR_IDENT_HEADPHONE_VOLUME, $target['volume']);
                     break;
 
                 default:
@@ -586,103 +605,127 @@ class SonyTV extends IPSModule
     /**
      * @throws \JsonException
      */
-    private function GetPowerStatus(): ?int
+    private function getPowerStatus(): ?int
     {
         $IP = $this->ReadPropertyString(self::PROP_HOST);
 
-        $this->Logger_Dbg(__FUNCTION__, 'Start ...');
+        $isConnected = $this->checkConnection($IP);
 
+        if (!$isConnected) {
+            $powerStatus = self::STATUS_OFF;
+        } else {
+            $apiResult   = $this->executeRestApiRequestWithRetry('system', 'getPowerStatus');
+            $powerStatus = $this->determinePowerStatus($apiResult);
+        }
+        $this->Logger_Dbg(__FUNCTION__, sprintf('PowerStatus: %s', $powerStatus));
+
+        if (is_null($powerStatus)) {
+            return null;
+        }
+
+        $this->SetValue(self::VAR_IDENT_POWER_STATUS, $powerStatus);
+        $this->setInstanceStatusByPower($powerStatus);
+
+        return $powerStatus;
+    }
+
+    private function checkConnection(string $IP): bool
+    {
         for ($i = 1; $i <= 10; $i++) {
-            $connected = @Sys_Ping($IP, 5000);
-            $this->Logger_Dbg(__FUNCTION__, sprintf('Connected (%s. Versuch): %s', $i, $connected ? 'true' : 'false'));
-
-            if ($connected || ($this->GetStatus() !== IS_ACTIVE)) {
-                break;
+            $isConnected = @Sys_Ping($IP, 5000);
+            $this->Logger_Dbg(__FUNCTION__, sprintf('Connected (%s. Versuch): %s', $i, $isConnected ? 'true' : 'false'));
+            if ($isConnected || ($this->GetStatus() !== IS_ACTIVE)) {
+                return $isConnected;
             }
             //next try if the current status is active
         }
 
-        if (!$connected) {
-            $PowerStatus = 0;
-        } else {
-            $ret = $this->SendRestAPIRequest('system', 'getPowerStatus', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
+        return $isConnected;
+    }
 
-            if ($ret === false) {
-                // zweiter Versuch, da ab und zu eine Abfrage schon mal scheitert
-                sleep(3);
-                $ret = $this->SendRestAPIRequest('system', 'getPowerStatus', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
-            }
-
-            if ($ret === false) {
-                $this->SetBuffer(self::BUF_TS_LASTFAILEDGETPOWERSTATE, (string)time());
-                $this->Logger_Dbg(__FUNCTION__, sprintf('Connected, but getPowerStatus failed at %s', date(DATE_RSS)));
-                $PowerStatus = 0;
-            } else {
-                $json_a = json_decode($ret, true, 512, JSON_THROW_ON_ERROR);
-
-                if (isset($json_a['error'])) {
-                    $this->SetBuffer(self::BUF_TS_LASTFAILEDGETPOWERSTATE, (string)time());
-                    return null;
-                }
-
-                if (!isset($json_a['result'])) {
-                    trigger_error('Unexpected return: ' . $ret);
-                    return null;
-                }
-
-                //während der Bootphase ist der status zunächst nicht korrekt (immer 'active') und wird daher anhand von 'getPlayingContentInfo' überprüft
-                $tsLastFailedGetBufferPowerState = (int)$this->GetBuffer(self::BUF_TS_LASTFAILEDGETPOWERSTATE);
-                $status                          = $json_a['result'][0]['status'];
-
-                if (($status === 'active') && (time() - $tsLastFailedGetBufferPowerState) <= self::LENGTH_OF_BOOTTIME) {
-                    $response = $this->SendRestAPIRequest(
-                        'avContent',
-                        'getPlayingContentInfo',
-                        [],
-                        '1.0',
-                        [CURLE_OPERATION_TIMEDOUT],
-                        [self::SYSTEM_ERROR_ILLEGAL_STATE, self::SYSTEM_ERROR_FORBIDDEN]
-                    );
-                    if ($response !== false) {
-                        $json_response = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
-                    }
-                    if (($response === false)
-                        || (isset($json_response['error'])
-                            && ($json_response['error'][0] === self::SYSTEM_ERROR_ILLEGAL_STATE))) {
-                        $this->Logger_Dbg(
-                            __FUNCTION__,
-                            sprintf(
-                                'Bootphase noch nicht abgeschlossen: %ss (%ss)',
-                                (time() - $tsLastFailedGetBufferPowerState),
-                                self::LENGTH_OF_BOOTTIME
-                            )
-                        );
-                        return null;
-                    }
-                }
-
-                switch ($json_a['result'][0]['status']) {
-                    case 'standby':
-                        $PowerStatus = 1;
-                        break;
-                    case 'active':
-                        $PowerStatus = 2;
-                        break;
-                    default:
-                        $PowerStatus = 0;
-                        trigger_error('Unexpected status: ' . $json_a['result'][0]['status']);
-                }
-            }
+    private function executeRestApiRequestWithRetry($endpoint, $method): bool|string
+    {
+        // Trying twice in case of a failure
+        $ret = $this->SendRestAPIRequest($endpoint, $method, [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
+        if ($ret === false) {
+            sleep(3);
+            $ret = $this->SendRestAPIRequest($endpoint, $method, [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
         }
-        $this->SetValue('PowerStatus', $PowerStatus); // 0-AUS, 1-Standby, 2-Active
+        return $ret;
+    }
 
-        if ($PowerStatus === 0) {
+    private function determinePowerStatus($apiResult): ?int
+    {
+        if ($apiResult === false) {
+            $this->SetBuffer(self::BUFFER_TIMESTAMP_LASTPOWERSTATUSFAIL, (string)time());
+            $this->Logger_Dbg(__FUNCTION__, sprintf('Connected, but getPowerStatus failed at %s', date(DATE_RSS)));
+            $PowerStatus = self::STATUS_OFF;
+        } else {
+            $json_a = json_decode($apiResult, true, 512, JSON_THROW_ON_ERROR);
+
+            if (isset($json_a['error'])) {
+                $this->SetBuffer(self::BUFFER_TIMESTAMP_LASTPOWERSTATUSFAIL, (string)time());
+                return null;
+            }
+
+            if (!isset($json_a['result'])) {
+                trigger_error('Unexpected return: ' . $apiResult);
+                return null;
+            }
+
+            //während der Bootphase ist der status zunächst nicht korrekt (immer 'active') und wird daher anhand von 'getPlayingContentInfo' überprüft
+            $tsLastFailedGetBufferPowerState = (int)$this->GetBuffer(self::BUFFER_TIMESTAMP_LASTPOWERSTATUSFAIL);
+            $status                          = $json_a['result'][0]['status'];
+
+            if (($status === 'active') && (time() - $tsLastFailedGetBufferPowerState) <= self::LENGTH_OF_BOOTTIME) {
+                $response = $this->SendRestAPIRequest(
+                    'avContent', 'getPlayingContentInfo', [], '1.0', [CURLE_OPERATION_TIMEDOUT],
+                    [self::SYSTEM_ERROR_ILLEGAL_STATE, self::SYSTEM_ERROR_FORBIDDEN]
+                );
+                if ($response !== false) {
+                    $json_response = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+                }
+                if (($response === false)
+                    || (isset($json_response['error'])
+                        && ($json_response['error'][0] === self::SYSTEM_ERROR_ILLEGAL_STATE))) {
+                    $this->Logger_Dbg(
+                        __FUNCTION__,
+                        sprintf(
+                            'Bootphase noch nicht abgeschlossen: %ss (%ss)',
+                            (time() - $tsLastFailedGetBufferPowerState),
+                            self::LENGTH_OF_BOOTTIME
+                        )
+                    );
+                    return null;
+                }
+            }
+
+            $PowerStatus = $this->assignPowerStatus($json_a['result'][0]['status']);
+        }
+
+        return $PowerStatus;
+    }
+
+    private function assignPowerStatus(string $status): int
+    {
+        switch ($status) {
+            case 'standby':
+                return self::STATUS_STANDBY;
+            case 'active':
+                return self::STATUS_ACTIVE;
+            default:
+                trigger_error('Unexpected status: ' . $status);
+                return self::STATUS_OFF;
+        }
+    }
+
+    private function setInstanceStatusByPower(int $powerStatus): void
+    {
+        if ($powerStatus === self::STATUS_OFF) {
             $this->SetStatus(IS_INACTIVE);
         } else {
             $this->SetStatus(IS_ACTIVE);
         }
-
-        return $PowerStatus;
     }
 
     private function GetUriOfSource($Sources, $Name): string
@@ -699,8 +742,8 @@ class SonyTV extends IPSModule
     /**
      * This method is used to retrieve the Ircc Code by its `name` from the provided codes array.
      *
-     * @param array $codes The array of codes.
-     * @param string $name The name of the Ircc Code to fetch its corresponding value.
+     * @param array  $codes The array of codes.
+     * @param string $name  The name of the Ircc Code to fetch its corresponding value.
      *
      * @return string The IRCC code value corresponding to the given name. Returns an empty string if the name is not found in the codes array.
      */
@@ -714,6 +757,7 @@ class SonyTV extends IPSModule
 
         return '';
     }
+
     /**
      * @throws \JsonException
      */
@@ -737,10 +781,12 @@ class SonyTV extends IPSModule
         }
     }
 
-    private function getResults($response): array {
+    private function getResults($response): array
+    {
         $arr = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
-        if (isset($arr['result']))
+        if (isset($arr['result'])) {
             return $arr['result'];
+        }
 
         return $arr['results'] ?? [];
     }
@@ -759,7 +805,7 @@ class SonyTV extends IPSModule
         bool $ignoreResponse,
         array $ignoredCurlErrors,
         array $ignoredResponseErrors
-    ) {
+    ): false|string {
         //$this->Logger_Dbg(__FUNCTION__, sprintf('tvip: %s, service: %s, headers: %s, data: %s, returnHeader: %s', $tvip, $service, json_encode($headers), $data_json, $returnHeader?'true':'false'));
         $this->Logger_Dbg(
             __FUNCTION__,
@@ -868,7 +914,7 @@ class SonyTV extends IPSModule
             trigger_error('Invalid RemoteKey');
         }
 
-        $data = $this->getXMLEnvelopeData($irccCode);
+        $data    = $this->getXMLEnvelopeData($irccCode);
         $headers = $this->getHeadersArray(strlen($data));
 
         $ret = $this->SendCurlPost($this->ReadPropertyString(self::PROP_HOST), 'IRCC', $headers, $data, true, [], []);
@@ -904,10 +950,18 @@ class SonyTV extends IPSModule
     /**
      * @throws \JsonException
      */
-    public function SendRestAPIRequest(string $service, string $method, $params, string $version, $ignoredCurlErrors, $ignoredErrors)
+    public function SendRestAPIRequest(string $service, string $method, $params, string $version, $ignoredCurlErrors, $ignoredErrors): false|string
     {
-        $this->Logger_Dbg(__FUNCTION__, sprintf('service: %s, message: %s, params: %s, version: %s', $service, $method,
-                                                json_encode($params, JSON_THROW_ON_ERROR), $version));
+        $this->Logger_Dbg(
+            __FUNCTION__,
+            sprintf(
+                'service: %s, message: %s, params: %s, version: %s',
+                $service,
+                $method,
+                json_encode($params, JSON_THROW_ON_ERROR),
+                $version
+            )
+        );
 
         $data = json_encode(
             [
@@ -958,7 +1012,7 @@ class SonyTV extends IPSModule
 
     private function createSourceList($response): array
     {
-        $json_a = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+        $json_a     = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
         $sourceList = [];
         foreach ($json_a['result'][0] as $result) {
             if (in_array(explode('?', $result['uri'])[0], ['extInput:hdmi', 'extInput:composite', 'extInput:component'], true)) { //physical inputs
@@ -975,6 +1029,7 @@ class SonyTV extends IPSModule
         $this->WriteListProfile($profile, $jsonSourceList, $property);
         $this->Logger_Dbg(__FUNCTION__, 'SourceList: ' . $jsonSourceList);
     }
+
     /**
      * @throws \JsonException
      */
@@ -1108,7 +1163,7 @@ class SonyTV extends IPSModule
     private function CreateProfileInteger($ProfileName, $Icon, $Prefix, $Suffix, $MinValue, $MaxValue, $StepSize, $Digits): void
     {
         if (!IPS_VariableProfileExists($ProfileName)) {
-            IPS_CreateVariableProfile($ProfileName, 1);
+            IPS_CreateVariableProfile($ProfileName, VARIABLETYPE_INTEGER);
 
             $this->Logger_Inf('Variablenprofil angelegt: ' . $ProfileName);
         } else {
@@ -1155,7 +1210,7 @@ class SonyTV extends IPSModule
         //Properties, die im Konfigurationsformular gesetzt werden können
         $this->RegisterPropertyString(self::PROP_HOST, '');
         $this->RegisterPropertyString(self::PROP_PSK, '0000');
-        $this->RegisterPropertyInteger('UpdateInterval', 10);
+        $this->RegisterPropertyInteger(self::PROP_UPDATE_INTERVAL, 10);
 
         $this->RegisterPropertyBoolean('WriteLogInformationToIPSLogger', false);
         $this->RegisterPropertyBoolean('WriteDebugInformationToLogfile', false);
@@ -1178,9 +1233,9 @@ class SonyTV extends IPSModule
         if (!IPS_VariableProfileExists(self::PROFILE_POWERSTATUS)) {
             $this->CreateProfileIntegerAss(
                 self::PROFILE_POWERSTATUS, 'Power', '', '', 0, [
-                                             [0, 'Ausgeschaltet', '', -1],
-                                             [1, 'Standby', '', -1],
-                                             [2, 'Eingeschaltet', '', -1]
+                                             [self::STATUS_OFF, 'Ausgeschaltet', '', -1],
+                                             [self::STATUS_STANDBY, 'Standby', '', -1],
+                                             [self::STATUS_ACTIVE, 'Eingeschaltet', '', -1]
                                          ]
             );
         }
@@ -1208,22 +1263,22 @@ class SonyTV extends IPSModule
             );
         }
 
-        $this->RegisterVariableInteger('PowerStatus', 'Status', self::PROFILE_POWERSTATUS, 10);
-        $this->RegisterVariableBoolean('AudioMute', 'Mute', '~Switch', 20);
-        $this->RegisterVariableInteger('SpeakerVolume', 'Lautstärke Lautsprecher', self::PROFILE_VOLUME, 30);
-        $this->RegisterVariableInteger('HeadphoneVolume', 'Lautstärke Kopfhörer', self::PROFILE_VOLUME, 40);
-        $this->RegisterVariableInteger('SendRemoteKey', 'Sende FB Taste', self::PROFILE_REMOTEKEY, 50);
+        $this->RegisterVariableInteger(self::VAR_IDENT_POWER_STATUS, 'Status', self::PROFILE_POWERSTATUS, 10);
+        $this->RegisterVariableBoolean(self::VAR_IDENT_AUDIO_MUTE, 'Mute', '~Switch', 20);
+        $this->RegisterVariableInteger(self::VAR_IDENT_SPEAKER_VOLUME, 'Lautstärke Lautsprecher', self::PROFILE_VOLUME, 30);
+        $this->RegisterVariableInteger(self::VAR_IDENT_HEADPHONE_VOLUME, 'Lautstärke Kopfhörer', self::PROFILE_VOLUME, 40);
+        $this->RegisterVariableInteger(self::VAR_IDENT_SEND_REMOTE_KEY, 'Sende FB Taste', self::PROFILE_REMOTEKEY, 50);
         $this->RegisterVariableInteger(self::VAR_IDENT_INPUT_SOURCE, 'Eingangsquelle', self::PROFILE_SOURCES, 60);
-        $this->RegisterVariableInteger('Application', 'Starte Applikation', self::PROFILE_APPLICATIONS, 70);
+        $this->RegisterVariableInteger(self::VAR_IDENT_APPLICATION, 'Starte Applikation', self::PROFILE_APPLICATIONS, 70);
 
         // Aktivieren der Statusvariablen
-        $this->EnableAction('PowerStatus');
-        $this->EnableAction('AudioMute');
-        $this->EnableAction('SendRemoteKey');
+        $this->EnableAction(self::VAR_IDENT_POWER_STATUS);
+        $this->EnableAction(self::VAR_IDENT_AUDIO_MUTE);
+        $this->EnableAction(self::VAR_IDENT_SEND_REMOTE_KEY);
         $this->EnableAction(self::VAR_IDENT_INPUT_SOURCE);
-        $this->EnableAction('Application');
-        $this->EnableAction('SpeakerVolume');
-        $this->EnableAction('HeadphoneVolume');
+        $this->EnableAction(self::VAR_IDENT_APPLICATION);
+        $this->EnableAction(self::VAR_IDENT_SPEAKER_VOLUME);
+        $this->EnableAction(self::VAR_IDENT_HEADPHONE_VOLUME);
     }
 
 
@@ -1243,8 +1298,9 @@ class SonyTV extends IPSModule
             return self::STATUS_INST_IP_IS_EMPTY;
         }
 
-        return $this->GetPowerStatus() > 0 ? IS_ACTIVE : IS_INACTIVE;
+        return $this->getPowerStatus() > self::STATUS_OFF ? IS_ACTIVE : IS_INACTIVE;
     }
+
     private function Logger_Err(string $message): void
     {
         $this->SendDebug('LOG_ERR', $message, 0);
@@ -1302,7 +1358,10 @@ class SonyTV extends IPSModule
         $instanceID = $this->InstanceID;
 
         foreach (IPS_GetVariableList() as $VarID) {
-            if (IPS_GetParent($VarID) === $instanceID || IPS_GetVariable($VarID)['VariableCustomProfile'] === $ProfileName || IPS_GetVariable($VarID)['VariableProfile'] === $ProfileName) {
+            if (IPS_GetParent($VarID) === $instanceID || IPS_GetVariable($VarID)['VariableCustomProfile'] === $ProfileName
+                || IPS_GetVariable(
+                       $VarID
+                   )['VariableProfile'] === $ProfileName) {
                 return true;
             }
         }

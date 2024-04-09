@@ -267,10 +267,19 @@ class SonyDiscovery extends IPSModule
         array_pop($headerLines);
         $parsedHeaderData = [];
         foreach ($headerLines as $headerLine) {
-            $headerLineParts                                                   = explode(':', $headerLine);
-            $parsedHeaderData[strtoupper(trim(array_shift($headerLineParts)))] = trim(implode(':', $headerLineParts));
+            $headerInfo                           = $this->parseHeaderLine($headerLine);
+            $parsedHeaderData[$headerInfo['key']] = $headerInfo['value'];
         }
         return $parsedHeaderData;
+    }
+
+    private function parseHeaderLine(string $headerLine): array
+    {
+        $headerLineParts = explode(':', $headerLine);
+        return [
+            'key'   => strtoupper(trim(array_shift($headerLineParts))),
+            'value' => trim(implode(':', $headerLineParts))
+        ];
     }
 
     private function getDeviceInfoFromLocation(string $location): array
