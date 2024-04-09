@@ -159,7 +159,7 @@ class SonyTV extends IPSModule
             case self::VAR_IDENT_APPLICATION:
                 if ($Value >= 0) {
                     $this->SetValue(self::VAR_IDENT_APPLICATION, $Value);
-                    $this->StartApplication(htmlentities(GetValueFormatted($this->GetIDForIdent($Ident))));
+                    $this->StartApplication(htmlentities(GetValueFormatted($this->GetIDForIdent(self::VAR_IDENT_APPLICATION))));
                 }
                 break;
 
@@ -419,17 +419,23 @@ class SonyTV extends IPSModule
     {
         $Applications = $this->getApplicationList();
         if ($Applications === null) {
-            trigger_error('Application List not yet set. Please update the application list.');
+            trigger_error('Application List not yet set. Please update the application list.', E_USER_WARNING);
             return false;
         }
-        $uri      = $this->GetUriOfSource($Applications['result'][0], $application);
+        if (trim($application) === '') {
+            trigger_error('Missing Application Name.', E_USER_WARNING);
+            return false;
+        }
+        $uri      = $this->GetUriOfSource($Applications, $application);
         $response = $this->SendRestAPIRequest('appControl', 'setActiveApp', [['uri' => $uri]], '1.0', [], []);
         return $this->isResponseValid($response);
     }
 
     private function getApplicationList(): ?array
     {
-        return json_decode($this->ReadAttributeString(self::ATTR_APPLICATIONLIST), true, 512, JSON_THROW_ON_ERROR);
+        $applicationList = $this->ReadAttributeString(self::ATTR_APPLICATIONLIST);
+        $this->SendDebug(__FUNCTION__, 'applicationList: ' . $applicationList, 0);
+        return json_decode($applicationList, true, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
