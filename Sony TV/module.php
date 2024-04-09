@@ -871,7 +871,7 @@ class SonyTV extends IPSModule
         $this->Logger_Dbg(__FUNCTION__, 'received:' . $response);
 
         if ($ignoreResponse) {
-            return true;
+            return '';
         }
         try {
             $json_a = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
