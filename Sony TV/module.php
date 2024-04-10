@@ -908,6 +908,7 @@ class SonyTV extends IPSModule
      */
     public function SendRemoteKey(string $name): bool
     {
+        $this->SendDebug(__FUNCTION__, 'name: '. $name, 0);
         $remoteControllerInfo = json_decode($this->ReadAttributeString(self::ATTR_REMOTECONTROLLERINFO), true, 512, JSON_THROW_ON_ERROR);
 
         if ($remoteControllerInfo === null) {
@@ -923,7 +924,10 @@ class SonyTV extends IPSModule
         $data    = $this->getXMLEnvelopeData($irccCode);
         $headers = $this->getHeadersArray(strlen($data));
 
+        // der Response wird ignoriert, da er nicht sinnvoll gefüllt ist
         $ret = $this->SendCurlPost($this->ReadPropertyString(self::PROP_HOST), 'IRCC', $headers, $data, true, [], []);
+
+        $this->SendDebug(__FUNCTION__, 'return: '. json_encode($ret), 0);
 
         return !($ret === false);
     }
