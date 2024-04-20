@@ -6,22 +6,12 @@ declare(strict_types=1);
 
 class SonyDiscovery extends IPSModule
 {
+    private const MODID_SSDP = '{FFFFA648-B296-E785-96ED-065F7CEE6F29}';
 
     private const PROPERTY_TARGET_CATEGORY_ID = 'targetCategoryID';
 
-    private const WS_DISCOVERY = [
-        'TIMEOUT'           => 2,
-        'MULTICAST_ADDRESS' => '239.255.255.250',
-        'MULTICAST_PORT'    => 1900,
-        'ST'                => 'urn:schemas-sony-com:service:ScalarWebAPI:1'
-    ];
-
     private const MODID_SONY_TV = '{3B91F3E3-FB8F-4E3C-A4BB-4E5C92BBCD58}';
 
-    private const MAX_RECEIVE_SIZE      = 2048;
-    private const RECEIVE_TIMEOUT_SECS  = 2;
-    private const RECEIVE_TIMEOUT_USECS = 100000;
-    private const MULTICAST_TTL         = 4;
 
 
     public function Create(): void
@@ -152,22 +142,12 @@ class SonyDiscovery extends IPSModule
      */
     private function DiscoverDevices(): array
     {
-        $SendData = $this->buildMessage();
-        $socket   = $this->createAndConfigureSocket();
 
-        if (!$socket) {
-            return [];
-        }
-
-        $this->logDebug('Search', $SendData);
-        if ($this->sendDataToSocket($socket, $SendData) === false) {
-            return [];
-        }
-
-        $device_info = $this->receiveDevicesInfo($socket);
+        $ssdp_id     = IPS_GetInstanceListByModuleID(self::MODID_SSDP)[0];
+        $searchTarget = 'urn:schemas-sony-com:service:ScalarWebAPI:1';
+        $devices     = YC_SearchDevices($ssdp_id, $searchTarget);
+        $device_info = $this->receiveDevicesInfo($devices);
         //print_r($device_info);
-
-        socket_close($socket);
 
         // zum Test wird der Eintrag verdoppelt und eine abweichende IP eingesetzt
         //$device_info[]=$device_info[0];
@@ -176,77 +156,23 @@ class SonyDiscovery extends IPSModule
         return $device_info;
     }
 
-    // Extracted method for building message
-    private function buildMessage(): string
-    {
-        $message = [
-            'M-SEARCH * HTTP/1.1',
-            'HOST: ' . self::WS_DISCOVERY['MULTICAST_ADDRESS'] . ':' . self::WS_DISCOVERY['MULTICAST_PORT'],
-            'MAN: "ssdp:discover"',
-            'MX: ' . self::WS_DISCOVERY['TIMEOUT'],
-            'ST: ' . self::WS_DISCOVERY['ST']
-        ];
-        return implode("\r\n", $message) . "\r\n\r\n";
-    }
 
-    // Extracted method for creating and configuring socket
-    private function createAndConfigureSocket()
+    private function receiveDevicesInfo(array $devices): array
     {
-        $socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
-        if ($socket) {
-            $this->logDebug('----' . __FUNCTION__, 'ST: ' . self::WS_DISCOVERY['ST']);
-            socket_set_option($socket, SOL_SOCKET, SO_BROADCAST, true);
-            socket_set_option($socket, SOL_SOCKET, SO_REUSEADDR, true);
-            socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => self::RECEIVE_TIMEOUT_SECS, 'usec' => self::RECEIVE_TIMEOUT_USECS]);
-            socket_set_option($socket, IPPROTO_IP, IP_MULTICAST_TTL, self::MULTICAST_TTL);
+        $devicesInfo = [];
+
+        foreach ($devices as $device) {
+            // Check if Server key exists and Fedora is found in its value
+            if (isset($device['Server']) && (strpos($device['Server'], 'Fedora') !== false)) {
+                $locationInfo = $this->getDeviceInfoFromLocation($device['Location']);
+                // Add to existing device info array
+                $devicesInfo[] = [
+                    'host'         => $device['IPv4'],
+                    'manufacturer' => $locationInfo['manufacturer'],
+                    'modelName'    => $locationInfo['modelName']
+                ];
+            }
         }
-        return $socket;
-    }
-
-    private function sendDataToSocket($socket, string $SendData): bool
-    {
-        return (bool)@socket_sendto(
-            $socket,
-            $SendData,
-            strlen($SendData),
-            0,
-            self::WS_DISCOVERY['MULTICAST_ADDRESS'],
-            self::WS_DISCOVERY['MULTICAST_PORT']
-        );
-    }
-
-    private function receiveDevicesInfo($socket): array
-    {
-        $devicesInfo  = [];
-        $timeoutLimit = time() + self::WS_DISCOVERY['TIMEOUT'];
-
-        // Loop until the timeout limit
-        do {
-            $buffer        = null;
-            $ipAddress    = '';
-            $port         = 0;
-            if (@socket_recvfrom($socket, $buffer, self::MAX_RECEIVE_SIZE, 0, $ipAddress, $port) === false) {
-                continue;
-            }
-
-            $this->logDebug(sprintf('Receive (%s:%s)', $ipAddress, $port), (string)$buffer);
-
-            if (!is_null($buffer)) {
-                $device = $this->parseHeaderData($buffer);
-                $this->logDebug('header', json_encode($device, JSON_THROW_ON_ERROR));
-
-                // Check if Server key exists and Fedora is found in its value
-                if (isset($device['SERVER']) && (strpos($device['SERVER'], 'Fedora') !== false)) {
-                    $locationInfo = $this->getDeviceInfoFromLocation($device['LOCATION']);
-                    // Add to existing device info array
-                    $devicesInfo[] = [
-                        'host'         => $ipAddress,
-                        'manufacturer' => $locationInfo['manufacturer'],
-                        'modelName'    => $locationInfo['modelName']
-                    ];
-                }
-            }
-        } while (time() < $timeoutLimit);
 
         return $devicesInfo;
     }
