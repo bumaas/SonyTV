@@ -5,7 +5,8 @@
       "host":         "IP Adresse",
       "model":        "Modell",
       "manufacturer": "Hersteller",
-      "unknown": "unbekannt"
+      "unknown": "unbekannt",
+      "The configurator is currently searching for devices. This could take a while...": "Der Konfigurator sucht nach Geräten. Einen Moment ..."
     }
   }
 }

@@ -7,10 +7,12 @@ declare(strict_types=1);
 class SonyDiscovery extends IPSModule
 {
     private const MODID_SSDP = '{FFFFA648-B296-E785-96ED-065F7CEE6F29}';
-
-    private const PROPERTY_TARGET_CATEGORY_ID = 'targetCategoryID';
-
     private const MODID_SONY_TV = '{3B91F3E3-FB8F-4E3C-A4BB-4E5C92BBCD58}';
+
+    private const BUFFER_DEVICES= 'Devices';
+    private const BUFFER_SEARCHACTIVE= 'SearchActive';
+    private const TIMER_LOADDEVICES = 'LoadDevicesTimer';
+
 
 
 
@@ -21,6 +23,9 @@ class SonyDiscovery extends IPSModule
 
         //we will wait until the kernel is ready
         $this->RegisterMessage(0, IPS_KERNELMESSAGE);
+
+        $this->SetBuffer(self::BUFFER_DEVICES, json_encode([]));
+        $this->SetBuffer(self::BUFFER_SEARCHACTIVE, json_encode(false));
     }
 
     /**
@@ -45,13 +50,23 @@ class SonyDiscovery extends IPSModule
         }
     }
 
+    public function RequestAction($Ident, $Value): bool
+    {
+        $this->SendDebug(__FUNCTION__, sprintf('Ident: %s, Value: %s', $Ident, $Value), 0);
+
+        if ($Ident === 'loadDevices') {
+            $this->loadDevices();
+        }
+        return true;
+    }
+
     /**
      * Liefert alle Geräte.
      *
      * @return array configlist all devices
      * @throws \JsonException
      */
-    private function getDeviceValues(): array
+    private function loadDevices(): void
     {
         $configuredDevices = $this->getConfiguredDevices();
         $this->logDevices('Configured Devices', $configuredDevices);
@@ -62,8 +77,15 @@ class SonyDiscovery extends IPSModule
         $configurationValues = $this->getDeviceConfig($discoveredDevices, $configuredDevices);
         // Check configured, but not discovered (i.e. offline) devices
         $this->checkConfiguredDevices($configuredDevices, $configurationValues);
+        $configurationValuesEncoded = json_encode($configurationValues);
+        $this->SendDebug(__FUNCTION__, '$configurationValues: ' . $configurationValuesEncoded, 0);
 
-        return $configurationValues;
+        $this->SetBuffer(self::BUFFER_SEARCHACTIVE, json_encode(false));
+        $this->SendDebug(__FUNCTION__, 'SearchActive deactivated', 0);
+
+        $this->SetBuffer(self::BUFFER_DEVICES, $configurationValuesEncoded);
+        $this->UpdateFormField('configurator', 'values', $configurationValuesEncoded);
+        $this->UpdateFormField('searchingInfo', 'visible', false);
     }
 
     private function getConfiguredDevices(): array
@@ -73,7 +95,18 @@ class SonyDiscovery extends IPSModule
 
     private function getDiscoveredDevices(): array
     {
-        return $this->DiscoverDevices();
+        $ssdp_id     = IPS_GetInstanceListByModuleID(self::MODID_SSDP)[0];
+        $searchTarget = 'urn:schemas-sony-com:service:ScalarWebAPI:1';
+        $devices     = YC_SearchDevices($ssdp_id, $searchTarget);
+        $device_info = $this->receiveDevicesInfo($devices);
+
+        //print_r($device_info);
+
+        // zum Test wird der Eintrag verdoppelt und eine abweichende IP eingesetzt
+        //$device_info[]=$device_info[0];
+        //$device_info[1]['host']='192.168.178.34';
+
+        return $device_info;
     }
 
     private function logDevices(string $title, array $devices): void
@@ -143,17 +176,6 @@ class SonyDiscovery extends IPSModule
     private function DiscoverDevices(): array
     {
 
-        $ssdp_id     = IPS_GetInstanceListByModuleID(self::MODID_SSDP)[0];
-        $searchTarget = 'urn:schemas-sony-com:service:ScalarWebAPI:1';
-        $devices     = YC_SearchDevices($ssdp_id, $searchTarget);
-        $device_info = $this->receiveDevicesInfo($devices);
-        //print_r($device_info);
-
-        // zum Test wird der Eintrag verdoppelt und eine abweichende IP eingesetzt
-        //$device_info[]=$device_info[0];
-        //$device_info[1]['host']='192.168.178.34';
-
-        return $device_info;
     }
 
 
@@ -250,6 +272,18 @@ class SonyDiscovery extends IPSModule
      */
     public function GetConfigurationForm(): string
     {
+        $this->SendDebug(__FUNCTION__, 'Start', 0);
+        $this->SendDebug(__FUNCTION__, 'SearchActive: ' . $this->GetBuffer(self::BUFFER_SEARCHACTIVE), 0);
+
+        // Do not start a new search, if a search is currently active
+        if (!json_decode($this->GetBuffer(self::BUFFER_SEARCHACTIVE))) {
+            $this->SetBuffer(self::BUFFER_SEARCHACTIVE, json_encode(true));
+
+            // Start device search in a timer, not prolonging the execution of GetConfigurationForm
+            $this->SendDebug(__FUNCTION__, 'RegisterOnceTimer', 0);
+            $this->RegisterOnceTimer(self::TIMER_LOADDEVICES, 'IPS_RequestAction($_IPS["TARGET"], "loadDevices", "");');
+        }
+
         $elements = [];
         $actions  = $this->formActions();
         $status   = [];
@@ -268,9 +302,20 @@ class SonyDiscovery extends IPSModule
      */
     private function formActions(): array
     {
+        $devices = json_decode($this->GetBuffer(self::BUFFER_DEVICES));
+
         return [
+            // Inform user, that the search for devices could take a while if no devices were found yet
             [
-                'name'     => 'DenonDiscovery',
+                'name'          => 'searchingInfo',
+                'type'          => 'ProgressBar',
+                'caption'       => 'The configurator is currently searching for devices. This could take a while...',
+                'indeterminate' => true,
+                'visible'       => count($devices) === 0
+            ],
+
+            [
+                'name'     => 'configurator',
                 'type'     => 'Configurator',
                 'rowCount' => 20,
                 'add'      => false,
@@ -296,9 +341,8 @@ class SonyDiscovery extends IPSModule
                         'width'   => 'auto'
                     ]
                 ],
-                'values'   => $this->getDeviceValues()
+                'values'   => $devices
             ]
         ];
     }
-
 }
