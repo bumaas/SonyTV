@@ -47,6 +47,8 @@ $meldung = meldungVon(fn () => $m->SendRestAPIRequest('system', 'getPowerStatus'
 pruefe($meldung !== null && str_contains($meldung, 'Invalid JSON'), 'ungültiges JSON erzeugt eine Warnung');
 $meldung = meldungVon(fn () => $m->SendRestAPIRequest('system', 'getPowerStatus', '"text"', '1.0'));
 pruefe($meldung !== null && str_contains($meldung, 'JSON array'), 'JSON ohne Liste erzeugt eine Warnung');
+$meldung = meldungVon(fn () => $m->SendRestAPIRequest('system', 'getPowerStatus', '{"services":["system"]}', '1.0'));
+pruefe($meldung !== null && str_contains($meldung, 'JSON array'), 'JSON-Objekt statt Liste erzeugt eine Warnung');
 pruefe($m->anfragen === [], 'bei ungültigen Parametern geht nichts an den TV');
 
 ergebnis();

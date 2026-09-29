@@ -24,6 +24,8 @@ foreach ([SonyTV::class, SonyDiscovery::class] as $klasse) {
             continue;
         }
         foreach ($methode->getParameters() as $parameter) {
+            // die exportierten Funktionen kennen keine Vorgabewerte: STV_…($id) ohne den Parameter endet mit "Parameter count does not match"
+            pruefe(!$parameter->isOptional(), sprintf('%s::%s(): Parameter $%s hat keinen Vorgabewert', $klasse, $methode->getName(), $parameter->getName()));
             $typ  = $parameter->getType();
             $name = $typ instanceof ReflectionNamedType ? $typ->getName() : (string)$typ;
             pruefe(

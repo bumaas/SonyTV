@@ -34,7 +34,9 @@
             "Headphone Volume": "Lautstärke Kopfhörer",
             "Send Remote Key": "Sende FB Taste",
             "Input Source": "Eingangsquelle",
-            "Start Application": "Starte Applikation"
+            "Start Application": "Starte Applikation",
+            "With 'Update remote key list' the keys of the remote control are read in again.": "Mit 'Tastenliste aktualisieren' werden die Tasten der Fernbedienung neu eingelesen.",
+            "Update remote key list": "Tastenliste aktualisieren"
         }
     }
 }

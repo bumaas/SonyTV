@@ -6,9 +6,16 @@ declare(strict_types=1);
  * Gemeinsamer Testrahmen: bindet SonyTV an den offiziellen Kernel-Stub
  * (symcon/SymconStubs, Submodul tests/stubs, gepinnt auf bf2950f).
  *
- * Netz-Naht: SonyTV::executeCurl() ist die einzige Stelle mit Netzverkehr. Die Harness
- * überschreibt sie und liefert Antworten aus tests/fixtures/<zustand>/<service>_<methode>.json
- * (echte Mitschnitte des KD-75XE9405, anonymisiert). Jeder Aufruf wird in $anfragen protokolliert.
+ * Nähte zum Modul (alles, was im Betrieb ins Netz geht, wartet oder vom Kernel abhängt):
+ *   executeCurl()    HTTP-Aufruf      -> Antworten aus tests/fixtures/<zustand>/<service>_<methode>.json
+ *   ping()           Sys_Ping         -> SonyTVHarness::$ping
+ *   pause()          sleep            -> wird nur protokolliert, die Tests warten nicht
+ *   now()            time             -> SonyTVHarness::$uhr (verstellbar)
+ *   kernelRunlevel() Kernel-Runlevel  -> SonyTVHarness::$runlevel
+ *   chartContents()  Diagramme        -> SonyTVHarness::$diagramme
+ * Die Stellgrößen sind statisch, weil createInstance() sofort Create und ApplyChanges ausführt.
+ *
+ * Fixtures sind echte Mitschnitte des KD-75XE9405, anonymisiert.
  *
  * Einbinden mit require_once __DIR__ . '/harness.php'; Instanzen über neueInstanz().
  */
@@ -20,7 +27,7 @@ set_error_handler(static function (int $nr, string $text, string $datei, int $ze
     if (!(error_reporting() & $nr)) {
         return false;
     }
-    if ($nr & (E_USER_ERROR | E_USER_WARNING | E_USER_NOTICE | E_WARNING | E_NOTICE)) {
+    if ($nr & (E_USER_ERROR | E_USER_WARNING | E_USER_NOTICE | E_WARNING | E_NOTICE | E_DEPRECATED | E_USER_DEPRECATED)) {
         throw new ErrorException($text, 0, $nr, $datei, $zeile);
     }
     return false;
@@ -32,17 +39,31 @@ final class SonyTVHarness extends SonyTV
 {
     public const MODULE_ID = '{3B91F3E3-FB8F-4E3C-A4BB-4E5C92BBCD58}'; // Sony TV/module.json
 
+    /** Ergebnis von ping(): true/false für alle Aufrufe oder eine Liste, die der Reihe nach verbraucht wird */
+    public static bool|array $ping = true;
+    public static int $runlevel    = KR_READY;
+    public static int $uhr         = 1790000000;
+    /** @var list<string|false> Inhalt je Diagramm, false = nicht lesbar */
+    public static array $diagramme = [];
+
     /**
-     * Antworten je "service/methode": string = Antworttext, int = curl-Fehlernummer.
+     * Antworten je "service/methode":
+     *   string                      Antworttext mit HTTP 200
+     *   int                         curl-Fehlernummer
+     *   array{http: int, body: string}  Antwort mit abweichendem HTTP-Status
      * Nicht belegte Anfragen enden mit einer Exception - kein stiller Netzverkehr.
      *
-     * @var array<string, string|int>
+     * @var array<string, string|int|array{http: int, body: string}>
      */
     public array $antworten = [];
 
     /** @var list<array{url: string, service: string, method: string, params: mixed, version: string, headers: list<string>, data: string}> */
     public array $anfragen = [];
 
+    /** @var list<array{0: string, 1: int}> jeder Ping (Host, Timeout in ms) */
+    public array $pings = [];
+    /** @var list<int> jede Pause in Sekunden */
+    public array $pausen = [];
     /** @var list<array{0: string, 1: mixed}> jedes SetValue */
     public array $writes = [];
     /** @var list<int> jedes SetStatus */
@@ -53,7 +74,36 @@ final class SonyTVHarness extends SonyTV
 
     protected function getTime(): int
     {
-        return time();
+        return self::$uhr;
+    }
+
+    protected function now(): int
+    {
+        return self::$uhr;
+    }
+
+    protected function kernelRunlevel(): int
+    {
+        return self::$runlevel;
+    }
+
+    protected function ping(string $host, int $timeoutMs): bool
+    {
+        $this->pings[] = [$host, $timeoutMs];
+        if (is_array(self::$ping)) {
+            return count(self::$ping) > 0 ? (bool)array_shift(self::$ping) : true;
+        }
+        return self::$ping;
+    }
+
+    protected function pause(int $seconds): void
+    {
+        $this->pausen[] = $seconds;
+    }
+
+    protected function chartContents(): array
+    {
+        return self::$diagramme;
     }
 
     protected function executeCurl(string $url, array $headers, string $data): array
@@ -78,9 +128,12 @@ final class SonyTVHarness extends SonyTV
         }
         $antwort = $this->antworten[$schluessel];
         if (is_int($antwort)) {
-            return [false, $antwort, 'simulierter curl-Fehler ' . $antwort];
+            return [false, $antwort, 'simulierter curl-Fehler ' . $antwort, 0];
         }
-        return [$antwort, 0, ''];
+        if (is_array($antwort)) {
+            return [$antwort['body'], 0, '', $antwort['http']];
+        }
+        return [$antwort, 0, '', 200];
     }
 
     protected function SetValue(string $Ident, mixed $Value): bool
@@ -125,6 +178,11 @@ final class SonyTVHarness extends SonyTV
         return $this->ReadAttributeString($Name);
     }
 
+    public function attributSetzen(string $Name, string $Wert): void
+    {
+        $this->WriteAttributeString($Name, $Wert);
+    }
+
     public function instanzStatus(): int
     {
         return $this->GetStatus();
@@ -143,10 +201,37 @@ final class SonyTVHarness extends SonyTV
         return $werte;
     }
 
+    /** Optionen der Aufzählung einer Variable (Wert => Beschriftung), leer bei anderer Darstellung. */
+    public function optionen(string $ident): array
+    {
+        $darstellung = $this->darstellung($ident);
+        if (($darstellung['PRESENTATION'] ?? '') !== VARIABLE_PRESENTATION_ENUMERATION) {
+            return [];
+        }
+        return array_column(json_decode($darstellung['OPTIONS'], true, 512, JSON_THROW_ON_ERROR), 'Caption', 'Value');
+    }
+
+    public function darstellung(string $ident): array
+    {
+        return IPS_GetVariable(IPS_GetObjectIDByIdent($ident, $this->InstanceID))['VariablePresentation'];
+    }
+
+    /** Wert der Option mit dieser Beschriftung. */
+    public function wertVon(string $ident, string $beschriftung): int
+    {
+        $wert = array_search($beschriftung, $this->optionen($ident), true);
+        if ($wert === false) {
+            throw new RuntimeException("Keine Option '$beschriftung' an $ident");
+        }
+        return $wert;
+    }
+
     /** Protokoll zurücksetzen, bevor ein Testabschnitt beginnt. */
     public function marke(): void
     {
         $this->anfragen  = [];
+        $this->pings     = [];
+        $this->pausen    = [];
         $this->writes    = [];
         $this->status    = [];
         $this->logOffset = count(IPS\LogServer::getLogMessages((string)$this->InstanceID));
@@ -157,6 +242,16 @@ final class SonyTVHarness extends SonyTV
     {
         return array_values(array_slice(IPS\LogServer::getLogMessages((string)$this->InstanceID), $this->logOffset));
     }
+}
+
+/** Mitschnitt als Text. */
+function mitschnitt(string $zustand, string $name): string
+{
+    $datei = __DIR__ . '/fixtures/' . $zustand . '/' . $name . '.json';
+    if (!is_file($datei)) {
+        throw new RuntimeException('Mitschnitt fehlt: ' . $datei);
+    }
+    return (string)file_get_contents($datei);
 }
 
 /** Legt eine Instanz im Kernel-Stub an (Create + ApplyChanges laufen in createInstance). */
@@ -214,6 +309,3 @@ function ergebnis(): never
 }
 
 IPS\Kernel::reset(); // einmal je Testlauf; weitere Instanzen entstehen im selben Kernel
-
-// Systemprofile, die das Modul voraussetzt - der ProfileManager des Stubs startet leer.
-IPS_CreateVariableProfile('~Switch', VARIABLETYPE_BOOLEAN);

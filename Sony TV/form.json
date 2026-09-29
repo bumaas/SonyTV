@@ -22,6 +22,8 @@
     {"type": "Button", "caption": "Update application list", "onClick": "IPS_RequestAction($id, 'UpdateApplicationList', 0);"},
     {"type": "Label", "caption": "With 'Update Input Source list' the available Input Sources are read in again."},
     {"type": "Button", "caption": "Update Input Source list", "onClick": "IPS_RequestAction($id, 'GetSourceListInfo', 0);"},
+    {"type": "Label", "caption": "With 'Update remote key list' the keys of the remote control are read in again."},
+    {"type": "Button", "caption": "Update remote key list", "onClick": "IPS_RequestAction($id, 'UpdateRemoteKeyList', 0);"},
     {"type": "Label", "caption": "With 'Create file with API information' a support file is created in the Symcon log directory. It contains a list of all functions supported by the TV set."},
     {"type": "Button", "caption": "Create file with API information", "onClick": "IPS_RequestAction($id, 'WriteAPIInformationToFile', 0);"},
     {"type": "TestCenter"},

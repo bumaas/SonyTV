@@ -53,11 +53,11 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 
 | Feld | Bedeutung |
 | :--- | :-------- |
-| `WriteLogInformationToIPSLogger` | Informationen und Fehlermeldungen gehen in das Logfile der IPSLibrary statt in das Symcon-Log |
+| `WriteLogInformationToIPSLogger` | Informationen gehen in das Logfile der IPSLibrary statt in das Symcon-Log, Fehlermeldungen in beide |
 | `WriteDebugInformationToLogfile` | Debug-Informationen werden zusätzlich in das Symcon-Log geschrieben |
 | `WriteDebugInformationToIPSLogger` | Debug-Informationen werden zusätzlich in das Logfile der IPSLibrary geschrieben |
 
-4. Übernehmen. Ist der Fernseher eingeschaltet oder im Standby, liest die Instanz jetzt die Liste der Eingänge, Apps und Fernbedienungstasten ein. War er aus, beim nächsten Übernehmen oder über die Knöpfe *Applikationsliste aktualisieren* und *Liste der Eingangsquellen aktualisieren* nachholen.
+4. Übernehmen. Ist der Fernseher eingeschaltet oder im Standby, liest die Instanz jetzt die Liste der Eingänge, Apps und Fernbedienungstasten ein. War er ausgeschaltet, holt die Instanz das nach, sobald er erreichbar ist. Die Knöpfe *Tastenliste aktualisieren*, *Liste der Eingangsquellen aktualisieren* und *Applikationsliste aktualisieren* lesen die Listen jederzeit neu ein.
 
 **Meldungen der Instanz**
 
@@ -80,9 +80,11 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 | Eingangsquelle | `InputSource` | Aufzählung | Laufender Eingang; Auswahl schaltet um |
 | Starte Applikation | `Application` | Aufzählung | Auswahl startet die App |
 
-Die Auswahllisten für Tasten, Eingänge und Apps kommen vom Fernseher selbst und stehen direkt an der jeweiligen Variable – bei mehreren Fernsehern also je Gerät getrennt und ohne Begrenzung der Anzahl. *Ausgeschaltet* heißt: Der Fernseher antwortet nicht im Netzwerk.
+Die Auswahllisten für Tasten, Eingänge und Apps kommen vom Fernseher selbst und stehen direkt an der jeweiligen Variable – bei mehreren Fernsehern also je Gerät getrennt und ohne Begrenzung der Anzahl. Jeder Eintrag hat eine feste Nummer als Wert. Sie bleibt ihm erhalten, auch wenn später Apps hinzukommen oder entfallen; -1 steht für „keine Auswahl“.
 
-**Hinweis für Nutzer älterer Versionen:** Bis 2.10 build 27 nutzte das Modul die Variablenprofile `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` und `STV.Applications`. Sie werden automatisch gelöscht, sobald keine Variable und kein Diagramm sie mehr verwendet. Hat eine Variable eines dieser Profile als eigenes Profil eingetragen, bleibt es dort stehen und wird nicht mehr aktualisiert – dann in den Variableneinstellungen das eigene Profil entfernen, damit die Darstellung des Moduls greift.
+Die Variablen zeigen einen Eingang, eine App oder eine Taste erst, wenn der Fernseher den Befehl angenommen hat. Läuft keiner der Eingänge aus der Liste, steht *Eingangsquelle* auf „-“. *Ausgeschaltet* heißt: Der Fernseher antwortet nicht im Netzwerk.
+
+**Hinweis für Nutzer älterer Versionen:** Bis 2.10 build 27 nutzte das Modul die Variablenprofile `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` und `STV.Applications`. Sie werden automatisch gelöscht, sobald keine Variable und kein Diagramm sie mehr verwendet. Hat eine Variable eines dieser Profile als eigenes Profil eingetragen, bleibt es dort stehen und wird nicht mehr aktualisiert – dann in den Variableneinstellungen das eigene Profil entfernen, damit die Darstellung des Moduls greift. Solange Symcon ein Diagramm nicht lesen kann, bleiben die Profile vorsichtshalber erhalten.
 
 ## 4. Automatisieren
 
@@ -98,6 +100,8 @@ RequestAction(IPS_GetObjectIDByIdent('SpeakerVolume', $tv), 20);
 ```
 
 Auf das Einschalten reagieren, z. B. mit einem ausgelösten Ereignis auf die Variable *Status* (Ident `PowerStatus`) mit der Bedingung „Wert = 2“.
+
+Die Statusvariablen sind schreibgeschützt: `SetValue` aus einem Skript ändert sie nicht. Geschaltet wird mit `RequestAction` oder mit den Funktionen aus dem nächsten Abschnitt.
 
 ## 5. Funktionen für Skripte
 
@@ -118,7 +122,7 @@ Die Namen von Eingängen, Apps und Tasten sind je Gerät verschieden; gültig is
 **Abfragen**
 
 ```php
-STV_UpdateAll(int $InstanzID): bool;              // alle Statusvariablen sofort aktualisieren
+STV_UpdateAll(int $InstanzID): bool;              // alle Statusvariablen sofort aktualisieren; false, wenn der Zustand nicht zu ermitteln war
 STV_ReadApplicationList(int $InstanzID): string;  // installierte Apps als JSON-Liste (title, uri, icon)
 ```
 
@@ -126,19 +130,20 @@ STV_ReadApplicationList(int $InstanzID): string;  // installierte Apps als JSON-
 
 ```php
 IPS_RequestAction($InstanzID, 'UpdateApplicationList', 0);
+IPS_RequestAction($InstanzID, 'UpdateRemoteKeyList', 0);
 IPS_RequestAction($InstanzID, 'GetSourceListInfo', 0);
 ```
 
 **Für Tüftler und den Support**
 
 ```php
-STV_WriteAPIInformationToFile(int $InstanzID, string $Dateiname = ''): bool;
+STV_WriteAPIInformationToFile(int $InstanzID, string $Dateiname): bool;
 STV_SendRestAPIRequest(int $InstanzID, string $Service, string $Methode, string $Parameter, string $Version): string;
 ```
 
-`STV_WriteAPIInformationToFile` schreibt alle Funktionen, die der Fernseher kennt, in eine Datei – ohne Dateinamen als *Sony \<Modell\>.txt* ins Log-Verzeichnis von Symcon. Diese Datei hilft bei Supportanfragen.
+`STV_WriteAPIInformationToFile` schreibt alle Funktionen, die der Fernseher kennt, in eine Datei – mit leerem Dateinamen (`''`) als *Sony \<Modell\>.txt* ins Log-Verzeichnis von Symcon. Der Parameter muss immer angegeben werden. Diese Datei hilft bei Supportanfragen.
 
-`STV_SendRestAPIRequest` sendet eine beliebige Anfrage an den Fernseher, um Funktionen auszuprobieren, die das Modul nicht selbst anbietet. `$Parameter` ist die Parameterliste als JSON; zurück kommt die Antwort des Fernsehers als JSON, bei einem Fehler ein Leerstring:
+`STV_SendRestAPIRequest` sendet eine beliebige Anfrage an den Fernseher, um Funktionen auszuprobieren, die das Modul nicht selbst anbietet. `$Parameter` ist die Parameterliste als JSON, also immer in eckigen Klammern; zurück kommt die Antwort des Fernsehers als JSON, bei einem Fehler ein Leerstring:
 
 ```php
 $Antwort = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri":"extInput:hdmi?port=2"}]', '1.0');
@@ -148,10 +153,10 @@ $Antwort = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri"
 
 - **Sony dokumentiert die Schnittstelle nicht für Heimgeräte.** Das Modul nutzt die Schnittstelle der professionellen Bravia-Displays, die auch die Heimgeräte sprechen. Getestet wurde es mit KD-65XG8588, KD-75XE9405, KD-65X8505B, KD-55XE8505, KD-55XE9005, KD-55XE8096, KD-43XD8305, KD-55A1BAEP und KDL-50W805B. Andere Modelle funktionieren meist ebenfalls; Rückmeldungen dazu gern im Forum.
 - **Ganz ausgeschaltet ist nicht Standby.** Ist der Fernseher vom Strom getrennt oder hat er das Netzwerk im Standby abgeschaltet, kann das Modul ihn nicht einschalten und meldet *Ausgeschaltet*.
-- **Nur die physischen Eingänge.** *Eingangsquelle* kennt HDMI-, AV- und Component-Eingänge. Über HDMI-CEC angemeldete Geräte und die Bildschirmspiegelung stehen nicht in der Liste.
+- **Nur die physischen Eingänge.** *Eingangsquelle* kennt HDMI-, AV- und Component-Eingänge. Über HDMI-CEC angemeldete Geräte und die Bildschirmspiegelung stehen nicht in der Liste; läuft etwas anderes als einer dieser Eingänge, zeigt die Variable „-“.
 - **Nach dem Einschalten dauert es.** Während der Fernseher startet, meldet er sich bereits als eingeschaltet, obwohl er noch nicht bedienbar ist. Das Modul wartet deshalb bis zu 90 Sekunden, bevor es *Eingeschaltet* setzt.
-- **Trennung vom Netz fällt verzögert auf.** Verschwindet ein eingeschalteter Fernseher plötzlich, prüft das Modul die Verbindung mehrfach, bevor es *Ausgeschaltet* meldet; das kann bis zu 50 Sekunden dauern.
-- **Ein falscher Pre-Shared Key** zeigt sich als *Ausgeschaltet* und im Debug der Instanz als `TV replied with error '403, Forbidden'`.
+- **Aussetzer werden abgefangen.** Antwortet ein eingeschalteter Fernseher nicht mehr, prüft das Modul die Verbindung dreimal mit je einer Sekunde, bevor es *Ausgeschaltet* meldet. Ein einzelner Aussetzer der Schnittstelle ändert den Status nicht, erst der zweite in Folge.
+- **Ein falscher Pre-Shared Key fällt nicht am Status auf.** Seinen Zustand meldet der Fernseher auch ohne gültigen Schlüssel. Die Auswahllisten bleiben aber leer, und Schalten scheitert; im Log von Symcon steht dann `TV replied with error '403, Forbidden'`.
 
 ## 7. Begriffe
 
@@ -164,7 +169,7 @@ $Antwort = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri"
 ## 8. Anhang: Technik
 
 - Der Fernseher wird per JSON-RPC über `http://<Host>/sony/<Service>` angesprochen, authentifiziert über den Header `X-Auth-PSK`. Fernbedienungstasten gehen als SOAP-Aufruf an `/sony/IRCC`.
-- Die Werte der Auswahlvariablen sind die Position in der jeweiligen Liste, `-1` steht für „keine Auswahl“.
+- Die Werte der Auswahlvariablen sind feste Nummern je Eintrag (Eingänge und Apps nach URI, Tasten nach Namen). Bei der ersten Einrichtung entsprechen sie der Position in der Liste, `-1` steht für „keine Auswahl“.
 - Die Discovery sucht per SSDP nach `urn:schemas-sony-com:service:ScalarWebAPI:1`.
 
 **GUIDs**

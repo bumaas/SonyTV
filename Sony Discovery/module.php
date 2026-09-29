@@ -62,24 +62,27 @@ class SonyDiscovery extends IPSModuleStrict
      */
     private function loadDevices(): void
     {
-        $configuredDevices = $this->getConfiguredDevices();
-        $this->logDevices('Configured Devices', $configuredDevices);
+        try {
+            $configuredDevices = $this->getConfiguredDevices();
+            $this->logDevices('Configured Devices', $configuredDevices);
 
-        $discoveredDevices = $this->getDiscoveredDevices();
-        $this->logDevices('Discovered Devices', $discoveredDevices);
+            $discoveredDevices = $this->getDiscoveredDevices();
+            $this->logDevices('Discovered Devices', $discoveredDevices);
 
-        $configurationValues = $this->getDeviceConfig($discoveredDevices, $configuredDevices);
-        // Check configured, but not discovered (i.e., offline) devices
-        $this->checkConfiguredDevices($configuredDevices, $configurationValues);
-        $configurationValuesEncoded = json_encode($configurationValues, JSON_THROW_ON_ERROR);
-        $this->SendDebug(__FUNCTION__, '$configurationValues: ' . $configurationValuesEncoded, 0);
+            $configurationValues = $this->getDeviceConfig($discoveredDevices, $configuredDevices);
+            // Check configured, but not discovered (i.e., offline) devices
+            $this->checkConfiguredDevices($configuredDevices, $configurationValues);
+            $configurationValuesEncoded = json_encode($configurationValues, JSON_THROW_ON_ERROR);
+            $this->SendDebug(__FUNCTION__, '$configurationValues: ' . $configurationValuesEncoded, 0);
 
-        $this->SetBuffer(self::BUFFER_SEARCHACTIVE, json_encode(false, JSON_THROW_ON_ERROR));
-        $this->SendDebug(__FUNCTION__, 'SearchActive deactivated', 0);
-
-        $this->SetBuffer(self::BUFFER_DEVICES, $configurationValuesEncoded);
-        $this->UpdateFormField('configurator', 'values', $configurationValuesEncoded);
-        $this->UpdateFormField('searchingInfo', 'visible', false);
+            $this->SetBuffer(self::BUFFER_DEVICES, $configurationValuesEncoded);
+            $this->UpdateFormField('configurator', 'values', $configurationValuesEncoded);
+        } finally {
+            // auch nach einem Fehler, sonst startet bis zum Neustart keine Suche mehr
+            $this->SetBuffer(self::BUFFER_SEARCHACTIVE, json_encode(false, JSON_THROW_ON_ERROR));
+            $this->SendDebug(__FUNCTION__, 'SearchActive deactivated', 0);
+            $this->UpdateFormField('searchingInfo', 'visible', false);
+        }
     }
 
     private function getConfiguredDevices(): array
@@ -95,17 +98,13 @@ class SonyDiscovery extends IPSModuleStrict
             return [];
         }
 
-        $ssdpID = $ssdpInstanceIDs[0];
-        $devices     = YC_SearchDevices($ssdpID, self::DISCOVERY_SEARCHTARGET);
-        $deviceInfo = $this->receiveDevicesInfo($devices);
+        $devices = @YC_SearchDevices($ssdpInstanceIDs[0], self::DISCOVERY_SEARCHTARGET);
+        if (!is_array($devices)) {
+            $this->SendDebug(__FUNCTION__, 'SSDP search failed', 0);
+            return [];
+        }
 
-        //print_r($device_info);
-
-        // zum Test wird der Eintrag verdoppelt und eine abweichende IP eingesetzt
-        //$device_info[]=$device_info[0];
-        //$device_info[1]['host']='192.168.178.34';
-
-        return $deviceInfo;
+        return $this->receiveDevicesInfo($devices);
     }
 
     private function logDevices(string $title, array $devices): void
@@ -160,8 +159,7 @@ class SonyDiscovery extends IPSModuleStrict
                     'host'         => IPS_GetProperty($id, 'Host'),
                     'manufacturer' => $this->Translate('unknown'),
                     'model'        => $this->Translate('unknown'),
-                    'instanceID'   => $id,
-                    'create'       => []
+                    'instanceID'   => $id
                 ];
             }
         }
@@ -206,7 +204,7 @@ class SonyDiscovery extends IPSModuleStrict
         return $deviceInfo;
     }
 
-    private function fetchXml(string $url): string
+    protected function fetchXml(string $url): string
     {
         $ch = curl_init();
         curl_setopt_array($ch, [

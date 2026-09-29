@@ -53,11 +53,11 @@ Under *Expert Parameters* there are three switches for logging:
 
 | Field | Meaning |
 | :---- | :------ |
-| `WriteLogInformationToIPSLogger` | information and error messages go to the IPSLibrary log file instead of the Symcon log |
+| `WriteLogInformationToIPSLogger` | information goes to the IPSLibrary log file instead of the Symcon log, error messages go to both |
 | `WriteDebugInformationToLogfile` | debug information is additionally written to the Symcon log |
 | `WriteDebugInformationToIPSLogger` | debug information is additionally written to the IPSLibrary log file |
 
-4. Apply. If the TV is on or in standby, the instance now reads the lists of inputs, apps and remote keys. If it was off, apply again later or use the buttons *Update application list* and *Update Input Source list*.
+4. Apply. If the TV is on or in standby, the instance now reads the lists of inputs, apps and remote keys. If it was off, the instance catches up as soon as the TV is reachable. The buttons *Update remote key list*, *Update Input Source list* and *Update application list* read the lists again at any time.
 
 **Instance states**
 
@@ -80,9 +80,11 @@ Under *Expert Parameters* there are three switches for logging:
 | Input Source | `InputSource` | Enumeration | current input; selecting switches over |
 | Start Application | `Application` | Enumeration | selecting starts the app |
 
-The selection lists for keys, inputs and apps come from the TV itself and are stored directly at the respective variable – separately for each TV if there are several, and without a limit on their number. *Off* means: the TV does not answer on the network.
+The selection lists for keys, inputs and apps come from the TV itself and are stored directly at the respective variable – separately for each TV if there are several, and without a limit on their number. Every entry has a fixed number as its value. It keeps that number even if apps are added or removed later; -1 means "no selection".
 
-**Note for users of older versions:** Up to 2.10 build 27 the module used the variable profiles `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` and `STV.Applications`. They are deleted automatically as soon as no variable and no chart uses them any more. If a variable has one of these profiles set as its custom profile, it stays there and is no longer updated – remove the custom profile in the variable settings so that the module's presentation takes effect.
+The variables show an input, an app or a key only after the TV has accepted the command. If none of the inputs in the list is playing, *Input Source* shows "-". *Off* means: the TV does not answer on the network.
+
+**Note for users of older versions:** Up to 2.10 build 27 the module used the variable profiles `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` and `STV.Applications`. They are deleted automatically as soon as no variable and no chart uses them any more. If a variable has one of these profiles set as its custom profile, it stays there and is no longer updated – remove the custom profile in the variable settings so that the module's presentation takes effect. As long as Symcon cannot read one of the charts, the profiles are kept as a precaution.
 
 ## 4. Automation
 
@@ -98,6 +100,8 @@ RequestAction(IPS_GetObjectIDByIdent('SpeakerVolume', $tv), 20);
 ```
 
 To react to the TV being switched on, use for example a triggered event on the variable *Status* (ident `PowerStatus`) with the condition "value = 2".
+
+The status variables are read-only: `SetValue` from a script does not change them. Switch with `RequestAction` or with the functions in the next section.
 
 ## 5. Functions for scripts
 
@@ -118,7 +122,7 @@ The names of inputs, apps and keys differ from device to device; valid are the o
 **Reading**
 
 ```php
-STV_UpdateAll(int $InstanceID): bool;              // update all status variables now
+STV_UpdateAll(int $InstanceID): bool;              // update all status variables now; false if the state could not be determined
 STV_ReadApplicationList(int $InstanceID): string;  // installed apps as a JSON list (title, uri, icon)
 ```
 
@@ -126,19 +130,20 @@ STV_ReadApplicationList(int $InstanceID): string;  // installed apps as a JSON l
 
 ```php
 IPS_RequestAction($InstanceID, 'UpdateApplicationList', 0);
+IPS_RequestAction($InstanceID, 'UpdateRemoteKeyList', 0);
 IPS_RequestAction($InstanceID, 'GetSourceListInfo', 0);
 ```
 
 **For tinkerers and support**
 
 ```php
-STV_WriteAPIInformationToFile(int $InstanceID, string $Filename = ''): bool;
+STV_WriteAPIInformationToFile(int $InstanceID, string $Filename): bool;
 STV_SendRestAPIRequest(int $InstanceID, string $Service, string $Method, string $Params, string $Version): string;
 ```
 
-`STV_WriteAPIInformationToFile` writes all functions the TV knows to a file – without a file name as *Sony \<model\>.txt* in Symcon's log directory. This file helps with support requests.
+`STV_WriteAPIInformationToFile` writes all functions the TV knows to a file – with an empty file name (`''`) as *Sony \<model\>.txt* in Symcon's log directory. The parameter must always be given. This file helps with support requests.
 
-`STV_SendRestAPIRequest` sends any request to the TV, to try out functions the module does not offer itself. `$Params` is the parameter list as JSON; the TV's answer is returned as JSON, an empty string on error:
+`STV_SendRestAPIRequest` sends any request to the TV, to try out functions the module does not offer itself. `$Params` is the parameter list as JSON, so always in square brackets; the TV's answer is returned as JSON, an empty string on error:
 
 ```php
 $Answer = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri":"extInput:hdmi?port=2"}]', '1.0');
@@ -148,10 +153,10 @@ $Answer = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri":
 
 - **Sony does not document the interface for consumer TVs.** The module uses the interface of the professional Bravia displays, which the consumer TVs speak as well. It has been tested with KD-65XG8588, KD-75XE9405, KD-65X8505B, KD-55XE8505, KD-55XE9005, KD-55XE8096, KD-43XD8305, KD-55A1BAEP and KDL-50W805B. Other models usually work too; feedback is welcome in the forum.
 - **Completely off is not standby.** If the TV is disconnected from power or has switched off its network in standby, the module cannot switch it on and reports *Off*.
-- **Physical inputs only.** *Input Source* knows HDMI, AV and component inputs. Devices announced via HDMI-CEC and screen mirroring are not in the list.
+- **Physical inputs only.** *Input Source* knows HDMI, AV and component inputs. Devices announced via HDMI-CEC and screen mirroring are not in the list; if anything other than one of these inputs is playing, the variable shows "-".
 - **Switching on takes a while.** While the TV is booting it already reports itself as on although it cannot be operated yet. The module therefore waits up to 90 seconds before setting *On*.
-- **A disconnection is noticed with a delay.** If a TV that is on suddenly disappears, the module checks the connection several times before reporting *Off*; this can take up to 50 seconds.
-- **A wrong pre-shared key** shows up as *Off* and in the instance's debug output as `TV replied with error '403, Forbidden'`.
+- **Dropouts are absorbed.** If a TV that is on stops answering, the module checks the connection three times with one second each before reporting *Off*. A single dropout of the interface does not change the status, only the second one in a row does.
+- **A wrong pre-shared key does not show in the status.** The TV reports its state even without a valid key. The selection lists stay empty, however, and switching fails; Symcon's log then contains `TV replied with error '403, Forbidden'`.
 
 ## 7. Terms
 
@@ -164,7 +169,7 @@ $Answer = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri":
 ## 8. Appendix: technical details
 
 - The TV is addressed via JSON-RPC at `http://<Host>/sony/<Service>`, authenticated with the header `X-Auth-PSK`. Remote keys are sent as a SOAP call to `/sony/IRCC`.
-- The values of the selection variables are the position in the respective list, `-1` means "no selection".
+- The values of the selection variables are fixed numbers per entry (inputs and apps by URI, keys by name). On first setup they equal the position in the list, `-1` means "no selection".
 - The discovery searches via SSDP for `urn:schemas-sony-com:service:ScalarWebAPI:1`.
 
 **GUIDs**

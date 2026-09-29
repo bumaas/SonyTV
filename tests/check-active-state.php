@@ -3,8 +3,12 @@
 declare(strict_types=1);
 
 /**
- * TV eingeschaltet: UpdateAll liest Lautstärke, Stummschaltung und laufenden Eingang;
- * Bootphase (getPowerStatus meldet fälschlich „active").
+ * TV eingeschaltet: UpdateAll liest Lautstärke, Stummschaltung und laufenden Eingang
+ * (dazu Befund 10 des Reviews vom 29.09.2026: läuft kein physischer Eingang, steht die Variable auf -1).
+ *
+ * Mitschnitte: fixtures/aktiv (HDMI 3 läuft), fixtures/illegal-state (getPlayingContentInfo meldet Fehler 7).
+ * Für Tuner, Bildschirmspiegelung und App im Vordergrund gibt es noch keine Mitschnitte; was der TV dann
+ * meldet, prüft dieser Test nicht.
  *
  * Aufruf: php tests/check-active-state.php
  */
@@ -24,30 +28,39 @@ $werte = $m->werte();
 pruefe($werte['PowerStatus'] === 2, 'PowerStatus = 2 (Eingeschaltet)');
 pruefe($werte['SpeakerVolume'] === 40, 'SpeakerVolume = 40 aus getVolumeInformation');
 pruefe($werte['AudioMute'] === false, 'AudioMute = false');
-pruefe($werte['InputSource'] === 2, 'InputSource = 2 (HDMI 3/ARC, Index in der SourceList)');
+pruefe($werte['InputSource'] === $m->wertVon('InputSource', 'HDMI 3/ARC'), 'InputSource zeigt HDMI 3/ARC');
+pruefe($werte['Application'] === -1, 'läuft ein Eingang, steht Application auf „keine Auswahl"');
 pruefe(array_column($m->anfragen, 'method') === ['getPowerStatus', 'getVolumeInformation', 'getPlayingContentInfo'], 'UpdateAll fragt Power-Status, Lautstärke und Eingang ab');
 
-// Laufender Inhalt ist kein physischer Eingang (z. B. eine App) -> keine Änderung am Eingang
-$m->antworten['avContent/getPlayingContentInfo'] = '{"result":[{"uri":"extInput:widi?port=1","source":"extInput:widi","title":"Bildschirm spiegeln"}],"id":1}';
-$m->UpdateAll();
-pruefe($m->werte()['InputSource'] === 2, 'unbekannter Inhalt ändert InputSource nicht');
-
-// getPlayingContentInfo mit Fehler 7 (Illegal State, z. B. während eine App läuft) -> Eingang -1
-$m->antworten['avContent/getPlayingContentInfo'] = '{"error":[7,"Illegal State"],"id":1}';
-$m->UpdateAll();
-pruefe($m->werte()['InputSource'] === -1, 'Illegal State: InputSource = -1');
-
-// Bootphase: nach einem Fehlschlag meldet getPowerStatus „active", Content-Info ist noch nicht bereit
-$m = konfigurierteInstanz('aktiv');
-$m->antworten['system/getPowerStatus'] = CURLE_OPERATION_TIMEDOUT;
-$m->UpdateAll(); // setzt den Zeitstempel des Fehlschlags
-$m->antworten['system/getPowerStatus']         = (string)file_get_contents(__DIR__ . '/fixtures/aktiv/system_getPowerStatus.json');
-$m->antworten['avContent/getPlayingContentInfo'] = '{"error":[7,"Illegal State"],"id":1}';
+// getPlayingContentInfo meldet Fehler 7 (Mitschnitt illegal-state): kein Eingang
+$m->antworten['avContent/getPlayingContentInfo'] = mitschnitt('illegal-state', 'avContent_getPlayingContentInfo');
 $m->marke();
-pruefe($m->UpdateAll() === false, 'Bootphase: UpdateAll liefert false');
-pruefe(!in_array(['PowerStatus', 2], $m->writes, true), 'Bootphase: PowerStatus wird nicht auf Eingeschaltet gesetzt');
+$m->UpdateAll();
+pruefe($m->werte()['InputSource'] === -1, 'Fehler 7: InputSource = -1');
+pruefe($m->logsSeitMarke() === [], 'Fehler 7 erzeugt keinen Logeintrag');
 
-$m->antworten['avContent/getPlayingContentInfo'] = (string)file_get_contents(__DIR__ . '/fixtures/aktiv/avContent_getPlayingContentInfo.json');
-pruefe($m->UpdateAll() === true && $m->werte()['PowerStatus'] === 2, 'nach der Bootphase: PowerStatus = 2');
+// --- Befund 10: der laufende Inhalt ist keiner der Eingänge aus der Liste ---
+// HDMI 3 läuft (Mitschnitt aktiv), die Quellenliste dieser Instanz kennt aber nur HDMI 1
+$m = neueInstanz();
+$m->antwortenAus('aktiv');
+$eingaenge                                                 = json_decode($m->antworten['avContent/getCurrentExternalInputsStatus'], true, 512, JSON_THROW_ON_ERROR);
+$eingaenge['result'][0]                                    = array_values(array_filter($eingaenge['result'][0], fn (array $e): bool => $e['uri'] === 'extInput:hdmi?port=1'));
+$m->antworten['avContent/getCurrentExternalInputsStatus'] = json_encode($eingaenge, JSON_THROW_ON_ERROR);
+$m->antworten['avContent/setPlayContent']                 = '{"result":[],"id":1}';
+IPS_SetProperty($m->id(), 'Host', '192.168.178.21');
+IPS_ApplyChanges($m->id());
+$m->RequestAction('InputSource', 0);
+pruefe($m->werte()['InputSource'] === 0, 'Ausgangslage: Variable zeigt HDMI 1');
+$m->marke();
+$m->UpdateAll();
+pruefe($m->werte()['InputSource'] === -1, 'laufender Inhalt passt zu keinem Eingang der Liste: InputSource = -1 statt des alten Werts');
+
+// Attribut aus einer früheren Version ('' statt JSON) bricht nicht ab
+$m->attributSetzen('SourceList', '');
+$m->attributSetzen('RemoteControllerInfo', '');
+$meldung = meldungVon(fn () => $m->UpdateAll());
+pruefe($meldung === null, 'leeres Attribut SourceList: UpdateAll läuft durch' . ($meldung === null ? '' : ': ' . substr($meldung, 0, 60)));
+$meldung = meldungVon(fn () => $m->SendRemoteKey('Home'));
+pruefe($meldung === 'Remote key list not yet read. Please update the remote key list.', 'leeres Attribut RemoteControllerInfo: Meldung statt Absturz');
 
 ergebnis();

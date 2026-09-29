@@ -1,0 +1,97 @@
+[
+    {
+        "CacheControl": "max-age=100",
+        "Date": "",
+        "Ext": "",
+        "Fields": [
+            "HOST: 239.255.255.250:1900",
+            "HUE-BRIDGEID: 0000000000000000"
+        ],
+        "IPv4": "192.168.178.190",
+        "Location": "http://192.168.178.190:80/description.xml",
+        "ST": "upnp:rootdevice",
+        "Server": "Hue/1.0 UPnP/1.0 IpBridge/1.78.0",
+        "USN": "uuid:00000000-0000-0000-0000-000000000000::upnp:rootdevice"
+    },
+    {
+        "CacheControl": "max-age=100",
+        "Date": "",
+        "Ext": "",
+        "Fields": [
+            "HOST: 239.255.255.250:1900",
+            "HUE-BRIDGEID: 0000000000000000"
+        ],
+        "IPv4": "192.168.178.190",
+        "Location": "http://192.168.178.190:80/description.xml",
+        "ST": "uuid:00000000-0000-0000-0000-000000000000",
+        "Server": "Hue/1.0 UPnP/1.0 IpBridge/1.78.0",
+        "USN": "uuid:00000000-0000-0000-0000-000000000000"
+    },
+    {
+        "CacheControl": "max-age=100",
+        "Date": "",
+        "Ext": "",
+        "Fields": [
+            "HOST: 239.255.255.250:1900",
+            "HUE-BRIDGEID: 0000000000000000"
+        ],
+        "IPv4": "192.168.178.190",
+        "Location": "http://192.168.178.190:80/description.xml",
+        "ST": "urn:schemas-upnp-org:device:basic:1",
+        "Server": "Hue/1.0 UPnP/1.0 IpBridge/1.78.0",
+        "USN": "uuid:00000000-0000-0000-0000-000000000000"
+    },
+    {
+        "CacheControl": "max-age=100",
+        "Date": "",
+        "Ext": "",
+        "Fields": [
+            "HOST: 239.255.255.250:1900",
+            "HUE-BRIDGEID: 0000000000000000"
+        ],
+        "IPv4": "192.168.178.190",
+        "Location": "http://192.168.178.190:80/description.xml",
+        "ST": "upnp:rootdevice",
+        "Server": "Hue/1.0 UPnP/1.0 IpBridge/1.78.0",
+        "USN": "uuid:00000000-0000-0000-0000-000000000000::upnp:rootdevice"
+    },
+    {
+        "CacheControl": "max-age=1800",
+        "Date": "",
+        "Ext": "",
+        "Fields": [],
+        "IPv4": "192.168.178.21",
+        "Location": "http://192.168.178.21:62390/sony/webapi/ssdp/dd.xml",
+        "ST": "urn:schemas-sony-com:service:ScalarWebAPI:1",
+        "Server": "FedoraCore/2 UPnP/1.0 MINT-X/1.8.1",
+        "USN": "uuid:00000000-0000-0000-0000-000000000000::urn:schemas-sony-com:service:ScalarWebAPI:1"
+    },
+    {
+        "CacheControl": "max-age=100",
+        "Date": "",
+        "Ext": "",
+        "Fields": [
+            "HOST: 239.255.255.250:1900",
+            "HUE-BRIDGEID: 0000000000000000"
+        ],
+        "IPv4": "192.168.178.190",
+        "Location": "http://192.168.178.190:80/description.xml",
+        "ST": "uuid:00000000-0000-0000-0000-000000000000",
+        "Server": "Hue/1.0 UPnP/1.0 IpBridge/1.78.0",
+        "USN": "uuid:00000000-0000-0000-0000-000000000000"
+    },
+    {
+        "CacheControl": "max-age=100",
+        "Date": "",
+        "Ext": "",
+        "Fields": [
+            "HOST: 239.255.255.250:1900",
+            "HUE-BRIDGEID: 0000000000000000"
+        ],
+        "IPv4": "192.168.178.190",
+        "Location": "http://192.168.178.190:80/description.xml",
+        "ST": "urn:schemas-upnp-org:device:basic:1",
+        "Server": "Hue/1.0 UPnP/1.0 IpBridge/1.78.0",
+        "USN": "uuid:00000000-0000-0000-0000-000000000000"
+    }
+]
