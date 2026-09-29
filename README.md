@@ -7,7 +7,7 @@ Dieses Modul ermöglicht die Kommunikation mit einem Sony TV.
 1. [Funktionsumfang](#1-funktionsumfang)  
 2. [Voraussetzungen](#2-voraussetzungen)  
 3. [Software-Installation](#3-software-installation)
-4. [Einrichten der Instanzen in IP-Symcon](#4-einrichten-der-instanzen-in-ip-symcon)
+4. [Einrichten der Instanzen in Symcon](#4-einrichten-der-instanzen-in-symcon)
 5. [Statusvariablen und Profile](#5-statusvariablen-und-profile)  
 6. [WebFront](#6-webfront)
 7. [PHP-Befehlsreferenz](#7-php-befehlsreferenz) 
@@ -15,7 +15,7 @@ Dieses Modul ermöglicht die Kommunikation mit einem Sony TV.
 
 ### 1. Funktionsumfang
 
-Mit dem Modul lassen sich Befehle an einen Sony TV absenden und die Statusrückmeldung in IP-Symcon empfangen.
+Mit dem Modul lassen sich Befehle an einen Sony TV absenden und die Statusrückmeldung in Symcon empfangen.
 
 Es werden zur Zeit Funktionen zum Ein-/Ausschalten, zur Lautstärkeregelung, zum Senden der Fernbedienungsfunktionen und zum Starten der Apps unterstützt.
 
@@ -28,7 +28,7 @@ Der Status des Gerätes wird im eingestellten Intervall gelesen und in den Statu
 ### 2. Voraussetzungen
 
  - Symcon 8.1
- - Sony TV mit Netzwerkanschluss. Fernsteuerung des Sony TV muss aktiviert sein (siehe Dokumentation des TV und https://pro-bravia.sony.net/develop/integrate/ip-control/). IP-Symcon muss im gleichen Netzwerk wie der TV sein.
+ - Sony TV mit Netzwerkanschluss. Fernsteuerung des Sony TV muss aktiviert sein (siehe Dokumentation des TV und https://pro-bravia.sony.net/develop/integrate/ip-control/). Symcon muss im gleichen Netzwerk wie der TV sein.
 
 #### Unterstützte Modelle:
 
@@ -50,11 +50,11 @@ Ob und wieweit es auch mit anderen Geräten funktioniert, muss ausprobert werden
 
 Das Modul wird über den Modul Store installiert.  
 
-### 4. Einrichten der Instanzen in IP-Symcon
+### 4. Einrichten der Instanzen in Symcon
 
-In IP-Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Instanz anzulegen.
+In Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Instanz anzulegen.
 
-Über _**Sony TV**_ kann die Instanz gefunden werden.
+Über _**Sony TV**_ kann die Instanz gefunden werden. Alternativ sucht die Instanz _**Sony Discovery**_ die Fernseher im Netzwerk und legt die Instanzen per Klick an.
 
 
 
@@ -63,9 +63,12 @@ In IP-Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Inst
 
 | Eigenschaft | Typ     | Standardwert | Funktion                                                              |
 | :---------: | :-----: | :----------: | :-------------------------------------------------------------------: |
-| Host        | string  |              | IP Adresse des Sony TV                  |
-| PSK | string  |  0000            | Der Pre-Shared Key, der im Sony TV eingestellt ist                            |
-| UpdateInterval    | int     |  10            | Wenn die Statusvariablen zyklisch aktualisiert werden sollen, dann ist hier das Intervall in Sekunden anzugeben|
+| `Host`        | string  |              | IP Adresse des Sony TV                  |
+| `PSK` | string  |  0000            | Der Pre-Shared Key, der im Sony TV eingestellt ist                            |
+| `UpdateInterval`    | int     |  10            | Wenn die Statusvariablen zyklisch aktualisiert werden sollen, dann ist hier das Intervall in Sekunden anzugeben|
+| `WriteLogInformationToIPSLogger` | bool | false | Informationen und Fehlermeldungen gehen in das Logfile der IPSLibrary statt in das Symcon-Log |
+| `WriteDebugInformationToLogfile` | bool | false | Debug-Informationen werden zusätzlich in das Symcon-Log geschrieben |
+| `WriteDebugInformationToIPSLogger` | bool | false | Debug-Informationen werden zusätzlich in das Logfile der IPSLibrary geschrieben |
 
 #### Testfunktionen
 

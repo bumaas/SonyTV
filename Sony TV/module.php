@@ -53,7 +53,6 @@ trait SonyConstants
 
     private const string TIMER_UPDATE = 'STV_UpdateTimer';
 
-
     private const string BUFFER_TIMESTAMP_LASTPOWERSTATUSFAIL = 'tsLastFailedGetBufferPowerState';
     private const int    LENGTH_OF_BOOTTIME                   = 90;
 
@@ -310,7 +309,6 @@ class SonyTV extends IPSModuleStrict
         return $this->validateResponse($response);
     }
 
-
     /**
      * Sets the audio mute status.
      *
@@ -420,7 +418,6 @@ class SonyTV extends IPSModuleStrict
         return $this->validateResponse($response);
     }
 
-
     private function getApplicationList(): array
     {
         $attribute = $this->ReadAttributeString(self::ATTR_APPLICATIONLIST);
@@ -476,10 +473,8 @@ class SonyTV extends IPSModuleStrict
 
         $this->Logger_Inf('Writing API Information to \'' . $filename . '\'');
 
-
         return file_put_contents($filename, $fileContent) > 0;
     }
-
 
     /**
      * Updates the application list and writes it to the attribute and list profile.
@@ -708,7 +703,7 @@ class SonyTV extends IPSModuleStrict
             return null;
         }
 
-         return $this->assignPowerStatus($status);
+        return $this->assignPowerStatus($status);
     }
 
     private function handlePowerStatusFailure(string $message): void
@@ -846,7 +841,6 @@ class SonyTV extends IPSModuleStrict
         return implode(', ', $arrParams);
     }
 
-
     private function SendCurlPost(
         string $tvip,
         string $service,
@@ -870,19 +864,7 @@ class SonyTV extends IPSModuleStrict
         );
 
         $url = 'http://' . $tvip . '/sony/' . $service;
-        $ch  = curl_init($url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        if (count($headers)) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        }
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $response   = curl_exec($ch);
-        $curl_errno = curl_errno($ch);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
+        [$response, $curl_errno, $curl_error] = $this->executeCurl($url, $headers, $data);
 
         if ($curl_errno) {
             if (in_array($curl_errno, $ignoredCurlErrors, true)) {
@@ -939,6 +921,30 @@ class SonyTV extends IPSModuleStrict
         }
 
         return $response;
+    }
+
+    /**
+     * Der eigentliche HTTP-Aufruf – die einzige Stelle mit Netzverkehr (Naht für die Tests).
+     *
+     * @return array{0: false|string, 1: int, 2: string} Antwort, curl-Fehlernummer, curl-Fehlertext
+     */
+    protected function executeCurl(string $url, array $headers, string $data): array
+    {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        if (count($headers)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        }
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $response   = curl_exec($ch);
+        $curl_errno = curl_errno($ch);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        return [$response, $curl_errno, $curl_error];
     }
 
     /**
@@ -1213,7 +1219,7 @@ class SonyTV extends IPSModuleStrict
 
             return $ret;
         }
-    */
+     */
 
     /*
        private function GetAuthorizationParams(): array
@@ -1235,7 +1241,7 @@ class SonyTV extends IPSModuleStrict
                ]
            ];
        }
-   */
+     */
     private function CheckProfileType($ProfileName, $VarType): void
     {
         $profile = IPS_GetVariableProfile($ProfileName);
@@ -1373,7 +1379,6 @@ class SonyTV extends IPSModuleStrict
         $this->EnableAction(self::VAR_IDENT_HEADPHONE_VOLUME);
     }
 
-
     private function SetInstanceStatus(): void
     {
         $ip = $this->ReadPropertyString(self::PROP_HOST);
@@ -1426,7 +1431,6 @@ class SonyTV extends IPSModuleStrict
         }
     }
 
-
     /**
      * Unregister a variable profile.
      *
@@ -1452,8 +1456,8 @@ class SonyTV extends IPSModuleStrict
         foreach (IPS_GetVariableList() as $VarID) {
             if (IPS_GetParent($VarID) === $instanceID || IPS_GetVariable($VarID)['VariableCustomProfile'] === $ProfileName
                 || IPS_GetVariable(
-                       $VarID
-                   )['VariableProfile'] === $ProfileName) {
+                    $VarID
+                )['VariableProfile'] === $ProfileName) {
                 return true;
             }
         }

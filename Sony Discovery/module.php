@@ -14,7 +14,6 @@ class SonyDiscovery extends IPSModuleStrict
     private const string BUFFER_SEARCHACTIVE    = 'SearchActive';
     private const string TIMER_LOADDEVICES      = 'LoadDevicesTimer';
 
-
     public function Create(): void
     {
         //Never delete this line!
@@ -168,7 +167,6 @@ class SonyDiscovery extends IPSModuleStrict
         }
     }
 
-
     private function receiveDevicesInfo(array $devices): array
     {
         $devicesInfo = [];
@@ -188,7 +186,6 @@ class SonyDiscovery extends IPSModuleStrict
 
         return $devicesInfo;
     }
-
 
     private function getDeviceInfoFromLocation(string $location): array
     {
