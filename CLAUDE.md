@@ -64,6 +64,8 @@ Aufzählung an der Variable (`registerListVariable()`), der Wert ist der **Index
 Attributliste (`RemoteControllerInfo`, `SourceList`, `ApplicationList`); `RequestAction` schaltet über
 diesen Index, nicht über den formatierten Text. Die Profile `STV.*` früherer Versionen räumt
 `removeUnusedLegacyProfiles()` in `ApplyChanges` ab, sobald keine Variable und kein Diagramm sie nutzt.
+`IPS_GetMediaContent()` liefert für Diagramme einer nicht verfügbaren Instanz `false` samt Warnung
+(am nuc gesehen) - deshalb dort `@` und `is_string`; der Stub kennt keine Diagramme, das ist nur live prüfbar.
 `tests/check_presentations.php` prüft die Darstellungsparameter gegen die Liste aus Symcon 9.1.
 
 ## Offene Punkte

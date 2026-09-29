@@ -1381,7 +1381,12 @@ class SonyTV extends IPSModuleStrict
         }
 
         foreach (IPS_GetMediaListByType(MEDIATYPE_CHART) as $mediaID) {
-            $content = json_decode((string)base64_decode(IPS_GetMediaContent($mediaID)), true);
+            // Diagramme einer nicht verfügbaren Instanz liefern false samt Warnung "InstanceInterface is not available"
+            $raw = @IPS_GetMediaContent($mediaID);
+            if (!is_string($raw)) {
+                continue;
+            }
+            $content = json_decode((string)base64_decode($raw), true);
             foreach ($content['axes'] ?? [] as $axis) {
                 if (($axis['profile'] ?? '') === $profile) {
                     return true;
