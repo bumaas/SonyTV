@@ -3,19 +3,19 @@
 /** @noinspection AutoloadingIssuesInspection */
 
 /*
-    hier ein paar Links, die als Grundlage dienten
+    Links, die als Grundlage dienten (erreichbar am 29.09.2026)
 
-API Beschreibung: https://developer.sony.com/develop/audio-control-api/hardware-overview/api-overview
+Steuerwege im Überblick: https://pro-bravia.sony.net/remote-display-control/
 
-https://pro-bravia.sony.net/develop/integrate/ip-control/
+REST-API: https://pro-bravia.sony.net/remote-display-control/rest-api/
 
-Return Werte: https://developer.sony.com/develop/audio-control-api/hardware-overview/error-codes
+Fernbedienungstasten (IRCC-IP): https://pro-bravia.sony.net/remote-display-control/ircc-ip/
 
 https://community.openhab.org/t/sony-devices-binding/14052/263
 
 https://github.com/gerard33/sony-bravia/blob/master/bravia.py (no longer maintained)
 
-https://github.com/aparraga/braviarc/blob/master/braviarc/braviarc.py
+https://github.com/antonioparraga/braviarc/blob/master/braviarc/braviarc.py
 
 https://github.com/waynehaffenden/bravia
 
@@ -426,7 +426,7 @@ class SonyTV extends IPSModuleStrict
     }
 
     /**
-     * Liest eine vom TV gelesene Liste aus ihrem Attribut; ein leeres oder ungültiges Attribut ergibt eine leere Liste.
+     * Liest ein JSON-Attribut (eine Liste des TV oder die Wertezuordnung); ein leeres oder ungültiges Attribut ergibt eine leere Liste.
      */
     private function readListAttribute(string $attribute): array
     {
@@ -582,9 +582,6 @@ class SonyTV extends IPSModuleStrict
         return is_array($result[0] ?? null) ? $result[0] : null;
     }
 
-    //
-    // private functions for internal use
-    //
     /**
      * @throws \JsonException
      */
@@ -687,7 +684,9 @@ class SonyTV extends IPSModuleStrict
             return null;
         }
 
-        //während der Bootphase ist der status zunächst nicht korrekt (immer 'active') und wird daher anhand von 'getPlayingContentInfo' überprüft
+        // Annahme aus früheren Versionen, nicht mitgeschnitten: Beim Hochfahren meldet der TV schon 'active'.
+        // In den ersten 90 s nach einem Fehlschlag gilt er deshalb erst als eingeschaltet, wenn
+        // 'getPlayingContentInfo' einen Inhalt liefert. Fehler 7 meldet der TV auch bei einer App im Vordergrund.
         if ($this->isStillBooting($status)) {
             return null;
         }
@@ -711,7 +710,7 @@ class SonyTV extends IPSModuleStrict
             return null;
         }
 
-        // Status-Updates erfolgen hier zentral
+        // Statusvariable und Instanzstatus folgen dem ermittelten Zustand
         $this->SetValue(self::VAR_IDENT_POWER_STATUS, $powerStatus);
         $this->SetStatus($powerStatus === self::STATUS_OFF ? IS_INACTIVE : IS_ACTIVE);
 
@@ -842,7 +841,7 @@ class SonyTV extends IPSModuleStrict
     private function ListAPIInfoOfService(string $servicename, string &$return): void
     {
         $return .= 'Service: ' . $servicename . PHP_EOL;
-        // der Service 'Contentshare' hat wohl keine Funktionen → 404 wird ignoriert
+        // der Service 'contentshare' antwortet auf getMethodTypes mit 404 (Mitschnitt aktiv), das ist kein Fehler
         $results = $this->getResult($this->callRestApi($servicename, 'getMethodTypes', [''], '1.0', [], [self::HTTP_ERROR_NOT_FOUND]));
         if ($results === null) {
             return;
@@ -1004,7 +1003,7 @@ class SonyTV extends IPSModuleStrict
     {
         $contents = [];
         foreach (IPS_GetMediaListByType(MEDIATYPE_CHART) as $mediaID) {
-            // Diagramme einer nicht verfügbaren Instanz liefern false samt Warnung "InstanceInterface is not available"
+            // Diagramme, deren Datei nicht verfügbar ist (MediaIsAvailable = false), liefern false samt Warnung "InstanceInterface is not available"
             $raw        = @IPS_GetMediaContent($mediaID);
             $contents[] = is_string($raw) ? $raw : false;
         }
@@ -1017,9 +1016,9 @@ class SonyTV extends IPSModuleStrict
      *
      * @param string $name The name of the remote key command.
      *
-     * @return bool Returns true if the remote key command was successfully sent, false otherwise.
+     * @return bool Returns true if the TV accepted the remote key command (HTTP status), false otherwise.
      *
-     * @throws \JsonException Throws an exception if there is an error parsing the JSON response.
+     * @throws \JsonException
      */
     public function SendRemoteKey(string $name): bool
     {
@@ -1040,7 +1039,7 @@ class SonyTV extends IPSModuleStrict
         $data    = $this->getXMLEnvelopeData($entries[$value]['value']);
         $headers = $this->getHeadersArray(strlen($data));
 
-        // der Inhalt der Antwort wird ignoriert, da er nicht sinnvoll gefüllt ist
+        // ausgewertet wird nur der HTTP-Status, nicht der Inhalt der Antwort
         $ret = $this->SendCurlPost($this->ReadPropertyString(self::PROP_HOST), 'IRCC', $headers, $data, true, [], []);
 
         $this->SendDebug(__FUNCTION__, 'return: ' . json_encode($ret), 0);
@@ -1262,7 +1261,7 @@ class SonyTV extends IPSModuleStrict
         $this->registerListVariable(self::VAR_IDENT_INPUT_SOURCE);
         $this->registerListVariable(self::VAR_IDENT_APPLICATION);
 
-        // Aktivieren der Statusvariablen
+        // Statusvariablen bedienbar machen
         $this->EnableAction(self::VAR_IDENT_POWER_STATUS);
         $this->EnableAction(self::VAR_IDENT_AUDIO_MUTE);
         $this->EnableAction(self::VAR_IDENT_SEND_REMOTE_KEY);

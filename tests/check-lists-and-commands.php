@@ -52,7 +52,8 @@ pruefe($m->SetSpeakerVolume(25) === true && $m->werte()['SpeakerVolume'] === 25,
 pruefe($m->anfragen[count($m->anfragen) - 1]['params'] === [['target' => 'speaker', 'volume' => '25']], 'SetSpeakerVolume schickt die Lautstärke als String');
 pruefe($m->SetAudioMute(true) === true && $m->werte()['AudioMute'] === true, 'SetAudioMute(true) setzt die Variable');
 
-// Mitschnitt standby: der TV lehnt mit 40005 „Display Is Turned off" ab
+// Der TV lehnt mit 40005 „Display Is Turned off" ab. Mitgeschnitten ist diese Antwort auf getVolumeInformation
+// im Standby; hier und bei Befund 9 steht sie für die Antwort auf einen Schaltbefehl.
 $m->antworten['audio/setAudioVolume'] = mitschnitt('standby', 'audio_getVolumeInformation');
 pruefe($m->SetSpeakerVolume(40) === false && $m->werte()['SpeakerVolume'] === 25, 'bei Fehlerantwort bleibt die Lautstärke-Variable unverändert');
 

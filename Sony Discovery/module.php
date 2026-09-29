@@ -55,9 +55,8 @@ class SonyDiscovery extends IPSModuleStrict
     }
 
     /**
-     * Liefert alle Geräte.
+     * Sucht die Geräte im Netzwerk, legt das Ergebnis im Buffer ab und aktualisiert die Liste im Formular.
      *
-     * @return void
      * @throws \JsonException
      */
     private function loadDevices(): void
@@ -70,7 +69,7 @@ class SonyDiscovery extends IPSModuleStrict
             $this->logDevices('Discovered Devices', $discoveredDevices);
 
             $configurationValues = $this->getDeviceConfig($discoveredDevices, $configuredDevices);
-            // Check configured, but not discovered (i.e., offline) devices
+            // Add configured, but not discovered (i.e., offline) devices
             $this->checkConfiguredDevices($configuredDevices, $configurationValues);
             $configurationValuesEncoded = json_encode($configurationValues, JSON_THROW_ON_ERROR);
             $this->SendDebug(__FUNCTION__, '$configurationValues: ' . $configurationValuesEncoded, 0);
@@ -170,7 +169,8 @@ class SonyDiscovery extends IPSModuleStrict
         $devicesInfo = [];
 
         foreach ($devices as $device) {
-            // Check if the Server key exists and Fedora is found in its value
+            // Die SSDP-Suche liefert auch Antworten anderer Geräte (Mitschnitt: Hue Bridge). Der TV meldet sich
+            // als Server 'FedoraCore/2 UPnP/1.0 MINT-X/1.8.1'.
             if (isset($device['Server']) && (str_contains($device['Server'], 'Fedora'))) {
                 $locationInfo = $this->getDeviceInfoFromLocation($device['Location']);
                 // Add to an existing device info array

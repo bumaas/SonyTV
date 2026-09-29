@@ -5,7 +5,8 @@ declare(strict_types=1);
 /**
  * Darstellungen statt Variablenprofile: Quellen, Apps und Fernbedienungstasten stehen als
  * Optionen einer Aufzählung an der jeweiligen Variable - je Instanz, ohne Obergrenze von 128,
- * ohne globale Profile STV.*. Die Auswahl in der Visualisierung schaltet über den Index der Liste.
+ * ohne globale Profile STV.*. Die Auswahl in der Visualisierung schaltet über den festen Wert des
+ * Eintrags; bei der Erstbelegung ist das seine Position in der Liste.
  *
  * Aufruf: php tests/check-presentations-lists.php
  */
@@ -59,7 +60,7 @@ pruefe(count(optionen($m, 'SendRemoteKey')) === 147, 'SendRemoteKey: alle 146 Ta
 $apps = json_decode($m->attribut('ApplicationList'), true, 512, JSON_THROW_ON_ERROR);
 pruefe(count(optionen($m, 'Application')) === 28, 'Application: alle 27 Apps plus „-“');
 
-// Auswahl schaltet über den Index
+// Auswahl schaltet über den Wert des Eintrags (Erstbelegung = Position)
 $m->antworten['IRCC/X_SendIRCC']          = '';
 $m->antworten['avContent/setPlayContent'] = '{"result":[],"id":1}';
 $m->antworten['appControl/setActiveApp']  = '{"result":[],"id":1}';

@@ -12,7 +12,7 @@ declare(strict_types=1);
  *     englische Beschriftung oder deren deutsche Übersetzung aus locale.json;
  *   - jede öffentliche Skriptfunktion PREFIX_Methode aus module.php steht in der Doku
  *     (Symcon-Rückrufe und Formularknöpfe mit onClick/onChange ausgenommen);
- *   - kein „IP-Symcon" außerhalb von Links (Produktname seit 2024 „Symcon").
+ *   - kein „IP-Symcon" außerhalb von Links und Code (Produktname seit 2024 „Symcon").
  *
  * Lücken, die es bei der Einführung schon gab, stehen in tests/readme-bekannt.json. Rot wird der
  * Test nur bei NEUEN Lücken - und bei bekannten, die inzwischen geschlossen sind: Die sind aus der

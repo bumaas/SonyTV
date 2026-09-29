@@ -7,7 +7,7 @@ declare(strict_types=1);
  * (symcon/SymconStubs, Submodul tests/stubs, gepinnt auf bf2950f).
  *
  * Nähte zum Modul (alles, was im Betrieb ins Netz geht, wartet oder vom Kernel abhängt):
- *   executeCurl()    HTTP-Aufruf      -> Antworten aus tests/fixtures/<zustand>/<service>_<methode>.json
+ *   executeCurl()    HTTP-Aufruf      -> $antworten, gefüllt aus tests/fixtures/<zustand>/<service>_<methode>.json
  *   ping()           Sys_Ping         -> SonyTVHarness::$ping
  *   pause()          sleep            -> wird nur protokolliert, die Tests warten nicht
  *   now()            time             -> SonyTVHarness::$uhr (verstellbar)
@@ -161,7 +161,7 @@ final class SonyTVHarness extends SonyTV
         foreach (glob(__DIR__ . '/fixtures/' . $zustand . '/*.json') as $datei) {
             $name = basename($datei, '.json');
             if (substr_count($name, '_') !== 1) {
-                continue; // Sonderfälle wie *_falscher_psk.json holt sich der Test selbst
+                continue; // ein weiterer Unterstrich: keine Antwort auf <service>_<methode>
             }
             [$service, $method]                       = explode('_', $name);
             $this->antworten[$service . '/' . $method] = (string)file_get_contents($datei);

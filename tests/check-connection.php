@@ -47,7 +47,7 @@ $m->UpdateAll();
 pruefe(count($m->pings) === 2 && $m->werte()['PowerStatus'] === 2, 'ein verlorener Ping: zweiter Versuch, TV bleibt An');
 SonyTVHarness::$ping = true;
 
-// Aus- und Einschalten blockiert höchstens die Pings eines Laufs
+// Ausschalten blockiert höchstens die Pings eines Laufs
 $m->antworten['system/setPowerStatus'] = '{"result":[],"id":1}';
 SonyTVHarness::$ping                   = false;
 $m->marke();
