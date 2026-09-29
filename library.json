@@ -1,12 +1,12 @@
 {
-  "id": "{15866F76-A025-4016-8C86-543A7663F3EB}",
-  "author": "bumaas",
-  "name": "Sony TV",
-  "url": "",
-  "compatibility": {
-    "version": "7.0"
-  },
-  "version": "2.00",
-  "build": 24,
-  "date": 1714039897
+    "id": "{15866F76-A025-4016-8C86-543A7663F3EB}",
+    "author": "bumaas",
+    "name": "Sony TV",
+    "url": "https://github.com/bumaas/SonyTV",
+    "compatibility": {
+        "version": "8.1"
+    },
+    "version": "2.10",
+    "build": 25,
+    "date": 1790682525
 }

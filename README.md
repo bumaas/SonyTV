@@ -27,7 +27,7 @@ Der Status des Gerätes wird im eingestellten Intervall gelesen und in den Statu
 
 ### 2. Voraussetzungen
 
- - IPS 5.3
+ - Symcon 8.1
  - Sony TV mit Netzwerkanschluss. Fernsteuerung des Sony TV muss aktiviert sein (siehe Dokumentation des TV und https://pro-bravia.sony.net/develop/integrate/ip-control/). IP-Symcon muss im gleichen Netzwerk wie der TV sein.
 
 #### Unterstützte Modelle:
@@ -142,7 +142,7 @@ STV_UpdateAll(int $InstanceID)
 Alle Statusvariablen werden aktualisiert. 
 
 ```php
-STV_UpdateApplicationList(int $InstanceID)
+IPS_RequestAction(int $InstanceID, 'UpdateApplicationList', 0)
 ```
 Die auf dem TV installierten Applikationen werden neu eingelesen und das Profil der Statusvariablen Application aktualisiert. Da die Anzahl der Assoziationen eines Profils auf 128 begrenzt sind, kann es hier zu einem Hinweis
 kommen, dass nicht alle Applikationen in die Liste aufgenommen wurden.
@@ -158,7 +158,18 @@ Die Funktion liefert eine json kodierte Liste der auf dem TV installierten Appli
 ```php
 STV_WriteAPIInformationToFile(int $InstanceID, $filename)
 ```
-Die API Informationen werden zu Supportzwecken in die angegebene Datei geschrieben. Wird kein Dateiname angegeben('')), so werden die Informationen in die Datei _*Sony \<Modellname\>.txt*_ im Log-Verzeichnis von IP-Symcon geschrieben. 
+Die API Informationen werden zu Supportzwecken in die angegebene Datei geschrieben. Wird kein Dateiname angegeben('')), so werden die Informationen in die Datei _*Sony \<Modellname\>.txt*_ im Log-Verzeichnis von Symcon geschrieben. 
+
+```php
+STV_SendRestAPIRequest(int $InstanceID, string $Service, string $Method, string $Params, string $Version): string
+```
+Sendet eine beliebige Anfrage an die REST-API des TV, etwa um Funktionen auszuprobieren, die das Modul nicht selbst anbietet. `$Params` ist die Parameterliste als JSON. Zurück kommt die Antwort des TV als JSON, bei einem Fehler ein Leerstring. Beispiel:
+
+```php
+$Antwort = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri":"extInput:hdmi?port=2"}]', '1.0');
+```
+
+Welche Services und Methoden ein Gerät kennt, steht in der Datei, die `STV_WriteAPIInformationToFile` erzeugt.
 
 ### 8. Anhang
 
