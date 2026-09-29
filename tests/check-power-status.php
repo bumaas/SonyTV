@@ -7,6 +7,7 @@ declare(strict_types=1);
  * (Befunde 2 und 3 des Reviews vom 29.09.2026).
  *
  * Mitschnitte: fixtures/illegal-state (Fehler 7 bei eingeschaltetem TV), fixtures/falscher-psk (HTTP 403).
+ * Fehler 7 meldet der TV, solange eine App im Vordergrund ist (fixtures/app-im-vordergrund, wortgleich).
  * Der Aussetzer (curl-Fehler 28) stammt aus demselben Mitschnitt, siehe fixtures/README.md.
  *
  * Aufruf: php tests/check-power-status.php
@@ -63,6 +64,7 @@ SonyTVHarness::$ping                         = true;
 SonyTVHarness::$uhr                         += 91;
 $m->antworten['avContent/getPlayingContentInfo'] = $fehler7;
 pruefe($m->UpdateAll() === true && $m->werte()['PowerStatus'] === 2, '91 s nach dem letzten Fehlschlag: Fehler 7 hält den TV nicht mehr auf');
+pruefe($fehler7 === mitschnitt('app-im-vordergrund', 'avContent_getPlayingContentInfo'), 'App im Vordergrund meldet denselben Fehler 7: startet der TV mit einer App, gilt er höchstens 90 s als startend');
 
 // --- Befund 3: Schalten scheitert, der TV läuft weiter ---
 $m                                     = konfigurierteInstanz('aktiv');

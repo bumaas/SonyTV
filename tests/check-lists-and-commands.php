@@ -25,8 +25,8 @@ pruefe($m->ReadApplicationList() === $m->attribut('ApplicationList'), 'ReadAppli
 $tasten = json_decode($m->attribut('RemoteControllerInfo'), true, 512, JSON_THROW_ON_ERROR);
 pruefe(count($tasten) === 146, 'RemoteControllerInfo enthält alle 146 Tasten');
 
-// Eingang umschalten
-$m->antworten['avContent/setPlayContent'] = '{"result":[],"id":1}';
+// Eingang umschalten (Antwort des TV aus dem Mitschnitt tuner)
+$m->antworten['avContent/setPlayContent'] = mitschnitt('tuner', 'avContent_setPlayContent');
 $m->marke();
 pruefe($m->SetInputSource('HDMI 2') === true, 'SetInputSource(HDMI 2) meldet Erfolg');
 pruefe($m->anfragen[0]['method'] === 'setPlayContent' && $m->anfragen[0]['params'] === [['uri' => 'extInput:hdmi?port=2']], 'SetInputSource schickt die URI des Eingangs');

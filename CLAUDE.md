@@ -35,9 +35,15 @@ Symcon-Modulbibliothek zur Steuerung von Sony-Bravia-Fernsehern über deren REST
   `40005 Display Is Turned off`.
 - **Falscher PSK:** `getPowerStatus` antwortet trotzdem (HTTP 200). Alles andere endet mit HTTP 403 und
   `[403, "Forbidden"]` samt `auth_url`, `/sony/IRCC` mit HTTP 403 und leerem Inhalt.
-- `getPlayingContentInfo` meldet bei eingeschaltetem TV zeitweise `[7, "Illegal State"]` (Mitschnitt
-  29.09.2026). In der Bootphase gilt das als „startet noch": `isStillBooting()` prüft 90 s nach dem letzten
-  Fehlschlag (kein Ping oder zwei Aussetzer in Folge) zusätzlich `getPlayingContentInfo`.
+- **Was `getPlayingContentInfo` meldet** (Mitschnitte 29.09.2026): bei einem HDMI-Eingang dessen `uri`
+  (`extInput:hdmi?port=3`), beim Tuner `tv:dvbt?trip=…` mit Sendername, bei Bildschirmspiegelung
+  `extInput:widi?port=1`, **bei einer App im Vordergrund dauerhaft `[7, "Illegal State"]`**. Welche App läuft,
+  verrät der TV nicht: `Application` zeigt nur, was das Modul selbst gestartet hat, und geht auf -1, sobald
+  wieder ein Inhalt läuft.
+- In der Bootphase gilt Fehler 7 als „startet noch": `isStillBooting()` prüft 90 s nach dem letzten
+  Fehlschlag (kein Ping oder zwei Aussetzer in Folge) zusätzlich `getPlayingContentInfo`. Startet der TV mit
+  einer App im Vordergrund, bleibt der Zustand deshalb bis zu 90 s unbekannt. Was der TV während des
+  Hochfahrens wirklich meldet, ist nicht mitgeschnitten.
 - Ein **einzelner Aussetzer** von `getPowerStatus` (im Mitschnitt belegt: curl-Fehler 28, drei Sekunden später
   wieder eine Antwort) ändert nichts; `UpdateAll` liefert dann `false` für „Zustand unbekannt".
 
@@ -67,8 +73,9 @@ JSON-Validität, `check_locale.php`, `check_presentations.php` und alle `tests/c
 Doku-Sperrklinke `check-readme.php`.
 
 **Fixtures sind echte Mitschnitte** (KD-75XE9405, SSDP-Suche am nuc), anonymisiert. Neue Fixtures nur
-mitschneiden, nie von Hand bauen; lesende Methoden genügen, schaltende (`setPowerStatus`,
-`requestReboot` …) nie gegen das echte Gerät zum Mitschneiden. Wo ein Test eine Liste verändert
+mitschneiden, nie von Hand bauen; lesende Methoden genügen meist. Schaltende Aufrufe gegen das echte Gerät
+nur nach Burkhards OK (so am 29.09.2026 für Tuner, Spiegelung und App: `setPlayContent`, `setActiveApp`),
+`setPowerStatus` und `requestReboot` gar nicht. Wo ein Test eine Liste verändert
 (App kommt hinzu, Eingang fehlt), geht er von einem Mitschnitt aus und sagt das im Kommentar.
 
 Das Repo liegt unter `T:\modules` — **das ist das produktive Modulverzeichnis des nuc**, und der
@@ -98,8 +105,8 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
 
 ## Offene Punkte
 
-- **Mitschnitte fehlen** für App im Vordergrund, TV-Tuner und Bildschirmspiegelung. Bis dahin ist ungeprüft,
-  was `getPlayingContentInfo` dann meldet.
+- **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die
+  Antwort auf `setActiveApp`.
 - Der Kopfhörer-Eintrag von `getVolumeInformation` schreibt ebenfalls `AudioMute` und kann den Wert des
   Lautsprechers überschreiben. Ohne Mitschnitt mit angeschlossenem Kopfhörer nicht prüfbar, deshalb unverändert.
 - Ein falscher PSK hat keinen eigenen Instanzstatus; er zeigt sich nur an leeren Listen und im Log.

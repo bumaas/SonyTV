@@ -6,9 +6,8 @@ declare(strict_types=1);
  * TV eingeschaltet: UpdateAll liest Lautstärke, Stummschaltung und laufenden Eingang
  * (dazu Befund 10 des Reviews vom 29.09.2026: läuft kein physischer Eingang, steht die Variable auf -1).
  *
- * Mitschnitte: fixtures/aktiv (HDMI 3 läuft), fixtures/illegal-state (getPlayingContentInfo meldet Fehler 7).
- * Für Tuner, Bildschirmspiegelung und App im Vordergrund gibt es noch keine Mitschnitte; was der TV dann
- * meldet, prüft dieser Test nicht.
+ * Mitschnitte: fixtures/aktiv (HDMI 3 läuft), fixtures/illegal-state (getPlayingContentInfo meldet Fehler 7),
+ * fixtures/tuner, fixtures/spiegelung und fixtures/app-im-vordergrund (Netflix, meldet ebenfalls Fehler 7).
  *
  * Aufruf: php tests/check-active-state.php
  */
@@ -39,21 +38,37 @@ $m->UpdateAll();
 pruefe($m->werte()['InputSource'] === -1, 'Fehler 7: InputSource = -1');
 pruefe($m->logsSeitMarke() === [], 'Fehler 7 erzeugt keinen Logeintrag');
 
-// --- Befund 10: der laufende Inhalt ist keiner der Eingänge aus der Liste ---
-// HDMI 3 läuft (Mitschnitt aktiv), die Quellenliste dieser Instanz kennt aber nur HDMI 1
-$m = neueInstanz();
-$m->antwortenAus('aktiv');
-$eingaenge                                                 = json_decode($m->antworten['avContent/getCurrentExternalInputsStatus'], true, 512, JSON_THROW_ON_ERROR);
-$eingaenge['result'][0]                                    = array_values(array_filter($eingaenge['result'][0], fn (array $e): bool => $e['uri'] === 'extInput:hdmi?port=1'));
-$m->antworten['avContent/getCurrentExternalInputsStatus'] = json_encode($eingaenge, JSON_THROW_ON_ERROR);
-$m->antworten['avContent/setPlayContent']                 = '{"result":[],"id":1}';
-IPS_SetProperty($m->id(), 'Host', '192.168.178.21');
-IPS_ApplyChanges($m->id());
-$m->RequestAction('InputSource', 0);
-pruefe($m->werte()['InputSource'] === 0, 'Ausgangslage: Variable zeigt HDMI 1');
-$m->marke();
+// --- Befund 10: es läuft kein physischer Eingang ---
+// HDMI 3 läuft (Mitschnitt aktiv), dann wird am TV auf Tuner bzw. Bildschirmspiegelung umgeschaltet
+foreach (['tuner' => 'TV-Tuner', 'spiegelung' => 'Bildschirmspiegelung'] as $zustand => $name) {
+    $m = konfigurierteInstanz('aktiv');
+    $m->UpdateAll();
+    pruefe($m->werte()['InputSource'] === $m->wertVon('InputSource', 'HDMI 3/ARC'), "$name, Ausgangslage: Variable zeigt HDMI 3/ARC");
+    $m->antworten['avContent/getPlayingContentInfo'] = mitschnitt($zustand, 'avContent_getPlayingContentInfo');
+    $m->marke();
+    pruefe($m->UpdateAll() === true && $m->werte()['PowerStatus'] === 2, "$name: UpdateAll liefert true, TV bleibt An");
+    pruefe($m->werte()['InputSource'] === -1, "$name: InputSource = -1 statt des alten Werts");
+    pruefe($m->werte()['Application'] === -1, "$name: Application = -1");
+    pruefe($m->logsSeitMarke() === [], "$name erzeugt keinen Logeintrag");
+}
+
+// --- App im Vordergrund (Mitschnitt: Netflix über das Modul gestartet, der TV meldet dauerhaft Fehler 7) ---
+$m = konfigurierteInstanz('aktiv');
 $m->UpdateAll();
-pruefe($m->werte()['InputSource'] === -1, 'laufender Inhalt passt zu keinem Eingang der Liste: InputSource = -1 statt des alten Werts');
+// die Antwort auf setActiveApp ist nicht mitgeschnitten; so antwortet der TV auf setPlayContent
+$m->antworten['appControl/setActiveApp'] = mitschnitt('tuner', 'avContent_setPlayContent');
+pruefe($m->StartApplication('Netflix') === true, 'App: Netflix gestartet');
+$m->antworten['avContent/getPlayingContentInfo'] = mitschnitt('app-im-vordergrund', 'avContent_getPlayingContentInfo');
+$m->marke();
+pruefe($m->UpdateAll() === true && $m->werte()['PowerStatus'] === 2, 'App: UpdateAll liefert true, TV bleibt An');
+pruefe($m->werte()['InputSource'] === -1, 'App: InputSource = -1 statt HDMI 3/ARC');
+pruefe($m->werte()['Application'] === $m->wertVon('Application', 'Netflix'), 'App: Application zeigt weiter Netflix');
+pruefe($m->logsSeitMarke() === [], 'App im Vordergrund erzeugt keinen Logeintrag');
+
+// zurück auf HDMI 3: die App ist nicht mehr im Vordergrund
+$m->antworten['avContent/getPlayingContentInfo'] = mitschnitt('aktiv', 'avContent_getPlayingContentInfo');
+$m->UpdateAll();
+pruefe($m->werte()['InputSource'] === $m->wertVon('InputSource', 'HDMI 3/ARC') && $m->werte()['Application'] === -1, 'wieder HDMI 3: InputSource zeigt den Eingang, Application = -1');
 
 // Attribut aus einer früheren Version ('' statt JSON) bricht nicht ab
 $m->attributSetzen('SourceList', '');
