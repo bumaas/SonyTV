@@ -66,7 +66,7 @@ trait SonyConstants
 
     private const int NO_SELECTION = -1;
 
-    // Variablenprofile bis 2.10 build 27, seitdem Darstellungen je Variable; werden gelöscht, sobald unbenutzt
+    // Variablenprofile bis 2.1 build 27, seitdem Darstellungen je Variable; werden gelöscht, sobald unbenutzt
     private const array LEGACY_PROFILES = ['STV.Applications', 'STV.PowerStatus', 'STV.Volume', 'STV.RemoteKey', 'STV.Sources'];
 
     private const int STATUS_OFF     = 0;
@@ -458,7 +458,7 @@ class SonyTV extends IPSModuleStrict
      *
      * Jeder Eintrag behält seinen Wert, auch wenn der TV die Liste später in anderer Reihenfolge oder mit
      * zusätzlichen Einträgen liefert; neue Einträge bekommen den nächsten freien Wert. Beim ersten Lauf
-     * wird die Position übernommen, die bis 2.10 build 31 der Wert war.
+     * wird die Position übernommen, die bis 2.1 build 31 der Wert war.
      *
      * @return array<int, array>
      * @throws \JsonException

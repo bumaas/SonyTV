@@ -84,7 +84,7 @@ The selection lists for keys, inputs and apps come from the TV itself and are st
 
 The variables show an input, an app or a key only after the TV has accepted the command. If none of the inputs in the list is playing, *Input Source* shows "-". *Off* means: the TV does not answer on the network.
 
-**Note for users of older versions:** Up to 2.10 build 27 the module used the variable profiles `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` and `STV.Applications`. They are deleted automatically as soon as no variable and no chart uses them any more. If a variable has one of these profiles set as its custom profile, it stays there and is no longer updated – remove the custom profile in the variable settings so that the module's presentation takes effect. As long as Symcon cannot read one of the charts, the profiles are kept as a precaution.
+**Note for users of older versions:** Up to 2.1 build 27 the module used the variable profiles `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` and `STV.Applications`. They are deleted automatically as soon as no variable and no chart uses them any more. If a variable has one of these profiles set as its custom profile, it stays there and is no longer updated – remove the custom profile in the variable settings so that the module's presentation takes effect. As long as Symcon cannot read one of the charts, the profiles are kept as a precaution.
 
 ## 4. Automation
 

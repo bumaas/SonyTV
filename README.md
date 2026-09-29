@@ -84,7 +84,7 @@ Die Auswahllisten für Tasten, Eingänge und Apps kommen vom Fernseher selbst un
 
 Die Variablen zeigen einen Eingang, eine App oder eine Taste erst, wenn der Fernseher den Befehl angenommen hat. Läuft keiner der Eingänge aus der Liste, steht *Eingangsquelle* auf „-“. *Ausgeschaltet* heißt: Der Fernseher antwortet nicht im Netzwerk.
 
-**Hinweis für Nutzer älterer Versionen:** Bis 2.10 build 27 nutzte das Modul die Variablenprofile `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` und `STV.Applications`. Sie werden automatisch gelöscht, sobald keine Variable und kein Diagramm sie mehr verwendet. Hat eine Variable eines dieser Profile als eigenes Profil eingetragen, bleibt es dort stehen und wird nicht mehr aktualisiert – dann in den Variableneinstellungen das eigene Profil entfernen, damit die Darstellung des Moduls greift. Solange Symcon ein Diagramm nicht lesen kann, bleiben die Profile vorsichtshalber erhalten.
+**Hinweis für Nutzer älterer Versionen:** Bis 2.1 build 27 nutzte das Modul die Variablenprofile `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` und `STV.Applications`. Sie werden automatisch gelöscht, sobald keine Variable und kein Diagramm sie mehr verwendet. Hat eine Variable eines dieser Profile als eigenes Profil eingetragen, bleibt es dort stehen und wird nicht mehr aktualisiert – dann in den Variableneinstellungen das eigene Profil entfernen, damit die Darstellung des Moduls greift. Solange Symcon ein Diagramm nicht lesen kann, bleiben die Profile vorsichtshalber erhalten.
 
 ## 4. Automatisieren
 

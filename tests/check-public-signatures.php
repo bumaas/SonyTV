@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Öffentliche Modulfunktionen werden von Symcon als PREFIX_Methode exportiert und dürfen
  * nur Parameter vom Typ bool, int, float oder string haben. Sonst meldet der Kernel beim
  * Laden der Bibliothek „Parameter … has no type hint or an unsupported type hint" und legt
- * die Funktion gar nicht an (STV_SendRestAPIRequest bis 2.10 build 25).
+ * die Funktion gar nicht an (STV_SendRestAPIRequest bis 2.1 build 25).
  *
  * Aufruf: php tests/check-public-signatures.php
  */

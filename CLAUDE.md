@@ -87,7 +87,7 @@ Neue Bibliotheksdaten (Funktionsliste, `library.json`) per `MC_ReloadModule` mit
 
 ## Darstellungen und Listenwerte
 
-Alle Variablen nutzen Darstellungen (seit 2.10 build 28). Tasten, Eingänge und Apps stehen als Optionen einer
+Alle Variablen nutzen Darstellungen (seit 2.1 build 28). Tasten, Eingänge und Apps stehen als Optionen einer
 Aufzählung an der Variable (`registerListVariable()`).
 
 **Der Wert eines Eintrags ist eine feste Nummer**, keine Position: Das Attribut `ListValues` hält je Ident die
