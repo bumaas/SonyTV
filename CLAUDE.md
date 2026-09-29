@@ -57,10 +57,15 @@ in einem Git-Worktree außerhalb von `T:\modules` machen oder in einem Rutsch sc
 Neue Bibliotheksdaten (Funktionsliste, `library.json`) per `MC_ReloadModule` mit Ordnername
 `SonyTV` einlesen.
 
+## Darstellungen
+
+Alle Variablen nutzen Darstellungen (seit 2.10 build 28). Tasten, Eingänge und Apps stehen als Optionen einer
+Aufzählung an der Variable (`registerListVariable()`), der Wert ist der **Index** in der jeweiligen
+Attributliste (`RemoteControllerInfo`, `SourceList`, `ApplicationList`); `RequestAction` schaltet über
+diesen Index, nicht über den formatierten Text. Die Profile `STV.*` früherer Versionen räumt
+`removeUnusedLegacyProfiles()` in `ApplyChanges` ab, sobald keine Variable und kein Diagramm sie nutzt.
+`tests/check_presentations.php` prüft die Darstellungsparameter gegen die Liste aus Symcon 9.1.
+
 ## Offene Punkte
 
-- Profile `STV.*` sind global: bei zwei Fernsehern überschreibt der zweite Quellen-, App- und
-  Tastenliste des ersten. Umstellung auf Presentations mit Optionen je Variable (Phase 3).
-- `getRemoteControllerInfo` liefert 146 Tasten, das Profil fasst nur 128 — der Rest fehlt in der
-  Auswahl (per `STV_SendRemoteKey` aber erreichbar).
 - `getCommonHeaders()` sendet eine Headerzeile ohne Namen (`'application/json; charset=UTF-8'`).

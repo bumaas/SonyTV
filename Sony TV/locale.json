@@ -24,7 +24,17 @@
             "Error while updating.": "Fehler beim Aktualisieren.",
             "Pre-Shared Key": "Pre-Shared Key (PSK)",
             "OK": "OK",
-            "With 'Create file with API information' a support file is created in the Symcon log directory. It contains a list of all functions supported by the TV set.": "Mit 'Datei mit API Informationen erstellen' wird im Symcon Log-Verzeichnis eine Supportdatei erstellt. Sie beinhaltet eine Auflistung aller vom TV-Gerät unterstützten Funktionen."
+            "With 'Create file with API information' a support file is created in the Symcon log directory. It contains a list of all functions supported by the TV set.": "Mit 'Datei mit API Informationen erstellen' wird im Symcon Log-Verzeichnis eine Supportdatei erstellt. Sie beinhaltet eine Auflistung aller vom TV-Gerät unterstützten Funktionen.",
+            "Status": "Status",
+            "Off": "Ausgeschaltet",
+            "Standby": "Standby",
+            "On": "Eingeschaltet",
+            "Mute": "Mute",
+            "Speaker Volume": "Lautstärke Lautsprecher",
+            "Headphone Volume": "Lautstärke Kopfhörer",
+            "Send Remote Key": "Sende FB Taste",
+            "Input Source": "Eingangsquelle",
+            "Start Application": "Starte Applikation"
         }
     }
 }

@@ -8,7 +8,7 @@ Dieses Modul ermöglicht die Kommunikation mit einem Sony TV.
 2. [Voraussetzungen](#2-voraussetzungen)  
 3. [Software-Installation](#3-software-installation)
 4. [Einrichten der Instanzen in Symcon](#4-einrichten-der-instanzen-in-symcon)
-5. [Statusvariablen und Profile](#5-statusvariablen-und-profile)  
+5. [Statusvariablen](#5-statusvariablen)  
 6. [WebFront](#6-webfront)
 7. [PHP-Befehlsreferenz](#7-php-befehlsreferenz) 
 8. [Anhang](#8-anhang)  
@@ -74,7 +74,21 @@ In Symcon ist für jedes TV Gerät das genutzt werden soll eine separate Instanz
 
 Alle Daten aktualisieren
 
-### 5. Statusvariablen und Profile
+### 5. Statusvariablen
+
+| Ident | Name | Typ | Darstellung | Bedeutung |
+| :---- | :--- | :-- | :---------- | :-------- |
+| PowerStatus | Status | int | Aufzählung | 0 Ausgeschaltet, 1 Standby, 2 Eingeschaltet. Schalten: 2 schaltet ein, alles andere aus. |
+| AudioMute | Mute | bool | Schalter | Stummschaltung |
+| SpeakerVolume | Lautstärke Lautsprecher | int | Schieberegler 0–100 % | Lautstärke der Lautsprecher |
+| HeadphoneVolume | Lautstärke Kopfhörer | int | Schieberegler 0–100 % | Lautstärke des Kopfhörerausgangs |
+| SendRemoteKey | Sende FB Taste | int | Aufzählung | Auswahl sendet die Fernbedienungstaste |
+| InputSource | Eingangsquelle | int | Aufzählung | laufender Eingang; Auswahl schaltet um |
+| Application | Starte Applikation | int | Aufzählung | Auswahl startet die App |
+
+Die Auswahllisten für Tasten, Eingänge und Apps liest das Modul beim Übernehmen der Konfiguration vom TV und legt sie als Optionen direkt an der jeweiligen Variable ab – je Instanz, bei mehreren Fernsehern also getrennt, und ohne Begrenzung der Anzahl. Der Wert ist die Position in der Liste, -1 steht für „keine Auswahl“.
+
+Bis 2.10 build 27 nutzte das Modul die Variablenprofile `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` und `STV.Applications`. Sie werden automatisch gelöscht, sobald keine Variable und kein Diagramm sie mehr verwendet. Wer ein solches Profil einer eigenen Variable zugewiesen hat, behält es.
 ### 6. WebFront
 ### 7. PHP-Befehlsreferenz
 
@@ -119,7 +133,7 @@ Parameter $Value: Name des Keys
 
 Die Keys sind je Gerät unterschiedlich und werden automatisch bei der Anmeldung ausgelesen.
 
-Die unterstützen Keys können dann dem Profil _*STV.RemoteKeys*_ entnommen werden.
+Die unterstützten Keys stehen als Optionen an der Statusvariablen _*Sende FB Taste*_.
 
 ```php
 STV_SetInputSource(int $InstanceID, string $source)
@@ -128,7 +142,7 @@ Auf eine Eingabe Quelle schalten.
 
 Die Keys sind je Gerät unterschiedlich und werden automatisch bei der Anmeldung ausgelesen.
 
-Die möglichen Eingabequellen können dem Profil _*STV.Sources*_ entnommen werden.
+Die möglichen Eingabequellen stehen als Optionen an der Statusvariablen _*Eingangsquelle*_.
 
 ```php
 STV_StartApplication(int $InstanceID, string $application)
@@ -137,7 +151,7 @@ Eine Applikation starten.
 
 Die Applikationen sind je Gerät unterschiedlich und werden automatisch bei der Anmeldung ausgelesen.
 
-Die möglichen Applikationen können dem Profil _*STV.Applications*_ entnommen werden.
+Die möglichen Applikationen stehen als Optionen an der Statusvariablen _*Starte Applikation*_.
 
 ```php
 STV_UpdateAll(int $InstanceID)
@@ -147,8 +161,7 @@ Alle Statusvariablen werden aktualisiert.
 ```php
 IPS_RequestAction(int $InstanceID, 'UpdateApplicationList', 0)
 ```
-Die auf dem TV installierten Applikationen werden neu eingelesen und das Profil der Statusvariablen Application aktualisiert. Da die Anzahl der Assoziationen eines Profils auf 128 begrenzt sind, kann es hier zu einem Hinweis
-kommen, dass nicht alle Applikationen in die Liste aufgenommen wurden.
+Die auf dem TV installierten Applikationen werden neu eingelesen und die Optionen der Statusvariablen _*Starte Applikation*_ aktualisiert.
 
 Bei Bedarf - um z.B. eine eigene Auswahlliste zu erstellen - kann die vollständige Liste dem Property ApplicationList entnommen werden. Beispiel:
 

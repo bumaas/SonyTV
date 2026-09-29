@@ -32,8 +32,6 @@ trait SonyConstants
     private const int STATUS_INST_IP_IS_EMPTY   = 202;
     private const int STATUS_INST_IP_IS_INVALID = 204; //IP-Adresse ist ungültig
 
-    private const int MAX_PROFILE_ASSOCIATIONS = 128;
-
     private const string PROP_HOST            = 'Host';
     private const string PROP_PSK             = 'PSK';
     private const string PROP_UPDATE_INTERVAL = 'UpdateInterval';
@@ -60,11 +58,8 @@ trait SonyConstants
     private const int SYSTEM_ERROR_FORBIDDEN     = 403;
     private const int HTTP_ERROR_NOT_FOUND       = 404;
 
-    private const string PROFILE_APPLICATIONS = 'STV.Applications';
-    private const string PROFILE_POWERSTATUS  = 'STV.PowerStatus';
-    private const string PROFILE_VOLUME       = 'STV.Volume';
-    private const string PROFILE_REMOTEKEY    = 'STV.RemoteKey';
-    private const string PROFILE_SOURCES      = 'STV.Sources';
+    // Variablenprofile bis 2.10 build 27, seitdem Darstellungen je Variable; werden gelöscht, sobald unbenutzt
+    private const array LEGACY_PROFILES = ['STV.Applications', 'STV.PowerStatus', 'STV.Volume', 'STV.RemoteKey', 'STV.Sources'];
 
     private const int STATUS_OFF     = 0;
     private const int STATUS_STANDBY = 1;
@@ -86,17 +81,6 @@ class SonyTV extends IPSModuleStrict
         $this->RegisterTimer(self::TIMER_UPDATE, 0, 'IPS_RequestAction($_IPS[\'TARGET\'], \'UpdateAll\', 0);');
     }
 
-    public function Destroy(): void
-    {
-        $this->UnregisterProfile(self::PROFILE_APPLICATIONS);
-        $this->UnregisterProfile(self::PROFILE_POWERSTATUS);
-        $this->UnregisterProfile(self::PROFILE_VOLUME);
-        $this->UnregisterProfile(self::PROFILE_REMOTEKEY);
-        $this->UnregisterProfile(self::PROFILE_SOURCES);
-
-        parent::Destroy();
-    }
-
     /**
      * @throws \JsonException
      */
@@ -110,23 +94,22 @@ class SonyTV extends IPSModuleStrict
         $this->Logger_Inf('TimerInterval set to ' . $TimerInterval . 's.');
 
         $this->RegisterVariables();
+        $this->removeUnusedLegacyProfiles();
 
         $this->SetInstanceStatus();
 
         $this->SetSummary($this->ReadPropertyString(self::PROP_HOST));
 
         if ($this->GetStatus() === IS_ACTIVE) {
-            //RemoteController Informationen auslesen und in Profil schreiben
+            //Fernbedienungstasten, Eingänge und Apps auslesen und als Optionen an die Variablen schreiben
             if (!$this->GetRemoteControllerInfo()) {
                 return;
             }
 
-            //Sources auslesen und in Profil schreiben
             if (!$this->GetSourceListInfo()) {
                 return;
             }
 
-            //Applikationen auslesen und in Profil schreiben
             $this->UpdateApplicationList();
         }
     }
@@ -142,23 +125,26 @@ class SonyTV extends IPSModuleStrict
                 break;
 
             case self::VAR_IDENT_SEND_REMOTE_KEY:
-                if ($Value >= 0) {
+                $keys = $this->getRemoteControllerKeys();
+                if (isset($keys[$Value])) {
                     $this->SetValue(self::VAR_IDENT_SEND_REMOTE_KEY, $Value);
-                    $this->SendRemoteKey(GetValueFormatted($this->GetIDForIdent(self::VAR_IDENT_SEND_REMOTE_KEY)));
+                    $this->SendRemoteKey($keys[$Value]['name']);
                 }
                 break;
 
             case self::VAR_IDENT_INPUT_SOURCE:
-                if ($Value >= 0) {
+                $sources = $this->getSourceList();
+                if (isset($sources[$Value])) {
                     $this->SetValue(self::VAR_IDENT_INPUT_SOURCE, $Value);
-                    $this->SetInputSource(GetValueFormatted($this->GetIDForIdent($Ident)));
+                    $this->SetInputSource($sources[$Value]['title']);
                 }
                 break;
 
             case self::VAR_IDENT_APPLICATION:
-                if ($Value >= 0) {
+                $applications = $this->getApplicationList();
+                if (isset($applications[$Value])) {
                     $this->SetValue(self::VAR_IDENT_APPLICATION, $Value);
-                    $this->StartApplication(htmlentities(GetValueFormatted($this->GetIDForIdent(self::VAR_IDENT_APPLICATION))));
+                    $this->StartApplication($applications[$Value]['title']);
                 }
                 break;
 
@@ -429,6 +415,17 @@ class SonyTV extends IPSModuleStrict
         }
     }
 
+    private function getRemoteControllerKeys(): array
+    {
+        $attribute = $this->ReadAttributeString(self::ATTR_REMOTECONTROLLERINFO);
+        try {
+            return json_decode($attribute, true, 512, JSON_THROW_ON_ERROR) ?: [];
+        } catch (JsonException $e) {
+            $this->Logger_Err('Invalid RemoteControllerInfo attribute: ' . $e->getMessage());
+            return [];
+        }
+    }
+
     private function getSourceList(): array
     {
         $attribute = $this->ReadAttributeString(self::ATTR_SOURCELIST);
@@ -492,7 +489,7 @@ class SonyTV extends IPSModuleStrict
 
         $applicationListJson = json_encode($applicationList, JSON_THROW_ON_ERROR);
         $this->WriteAttributeString(self::ATTR_APPLICATIONLIST, $applicationListJson);
-        $this->WriteListProfile(self::PROFILE_APPLICATIONS, $applicationListJson, 'title');
+        $this->registerListVariable(self::VAR_IDENT_APPLICATION);
         $this->Logger_Dbg(__FUNCTION__, 'ApplicationList: ' . $applicationListJson);
 
         return true;
@@ -968,7 +965,8 @@ class SonyTV extends IPSModuleStrict
 
         $irccCode = $this->getIrccCodeByName($remoteControllerInfo, $name);
         if ($irccCode === '') {
-            trigger_error('Invalid RemoteKey');
+            trigger_error('Invalid RemoteKey: ' . $name);
+            return false;
         }
 
         $data    = $this->getXMLEnvelopeData($irccCode);
@@ -1098,7 +1096,7 @@ class SonyTV extends IPSModuleStrict
         }
 
         $sourceList = $this->createSourceList($response);
-        $this->updateSourceList($sourceList, 'STV.Sources', 'title');
+        $this->updateSourceList($sourceList);
 
         return true;
     }
@@ -1115,11 +1113,11 @@ class SonyTV extends IPSModuleStrict
         return $sourceList;
     }
 
-    private function updateSourceList(array $sourceList, string $profile, string $property): void
+    private function updateSourceList(array $sourceList): void
     {
         $jsonSourceList = json_encode($sourceList, JSON_THROW_ON_ERROR);
         $this->WriteAttributeString(self::ATTR_SOURCELIST, $jsonSourceList);
-        $this->WriteListProfile($profile, $jsonSourceList, $property);
+        $this->registerListVariable(self::VAR_IDENT_INPUT_SOURCE);
         $this->Logger_Dbg(__FUNCTION__, 'SourceList: ' . $jsonSourceList);
     }
 
@@ -1145,36 +1143,11 @@ class SonyTV extends IPSModuleStrict
         $response = json_encode($json_a['result'][1], JSON_THROW_ON_ERROR);
         $this->WriteAttributeString(self::ATTR_REMOTECONTROLLERINFO, $response);
 
-        $this->WriteListProfile('STV.RemoteKey', $response, 'name');
+        $this->registerListVariable(self::VAR_IDENT_SEND_REMOTE_KEY);
 
         $this->Logger_Dbg(__FUNCTION__, 'RemoteControllerInfo: ' . json_encode($response, JSON_THROW_ON_ERROR));
 
         return true;
-    }
-
-    /**
-     * @throws \JsonException
-     */
-    private function WriteListProfile(string $ProfileName, string $jsonList, string $elementName = ''): void
-    {
-        $list = json_decode($jsonList, true, 512, JSON_THROW_ON_ERROR);
-
-        $ass[] = [-1, '-', '', -1];
-        foreach ($list as $key => $listElement) {
-            $ass[] = [$key, html_entity_decode($listElement[$elementName]), '', -1];
-        }
-
-        if (count($ass) > self::MAX_PROFILE_ASSOCIATIONS) {
-            $this->Logger_Inf(
-                __FUNCTION__ . ': Die maximale Anzahl Assoziationen (' . self::MAX_PROFILE_ASSOCIATIONS
-                . ') wurde überschritten. Folgende Einträge wurden nicht in das Profil \'' . $ProfileName . '\' übernommen: ' . PHP_EOL . implode(
-                    ', ',
-                    array_column(array_slice($ass, self::MAX_PROFILE_ASSOCIATIONS - count($ass)), 1)
-                )
-            );
-        }
-
-        $this->CreateProfileIntegerAss($ProfileName, '', '', '', 0, array_slice($ass, 0, self::MAX_PROFILE_ASSOCIATIONS));
     }
 
     /*
@@ -1242,62 +1215,6 @@ class SonyTV extends IPSModuleStrict
            ];
        }
      */
-    private function CheckProfileType($ProfileName, $VarType): void
-    {
-        $profile = IPS_GetVariableProfile($ProfileName);
-        if ($profile['ProfileType'] !== $VarType) {
-            trigger_error(
-                'Variable profile type does not match for already existing profile "' . $ProfileName
-                . '". The existing profile has to be deleted manually.'
-            );
-        }
-    }
-
-    private function CreateProfileInteger($ProfileName, $Icon, $Prefix, $Suffix, $MinValue, $MaxValue, $StepSize, $Digits): void
-    {
-        if (!IPS_VariableProfileExists($ProfileName)) {
-            IPS_CreateVariableProfile($ProfileName, VARIABLETYPE_INTEGER);
-
-            $this->Logger_Inf('Variablenprofil angelegt: ' . $ProfileName);
-        } else {
-            $this->CheckProfileType($ProfileName, VARIABLETYPE_INTEGER);
-        }
-
-        IPS_SetVariableProfileIcon($ProfileName, $Icon);
-        IPS_SetVariableProfileText($ProfileName, $Prefix, $Suffix);
-        IPS_SetVariableProfileDigits($ProfileName, $Digits); //  Nachkommastellen
-        IPS_SetVariableProfileValues($ProfileName, $MinValue, $MaxValue, $StepSize);
-    }
-
-    /**
-     * @throws \JsonException
-     */
-    private function CreateProfileIntegerAss($ProfileName, $Icon, $Prefix, $Suffix, $Digits, $Associations): void
-    {
-        if (count($Associations) === 0) {
-            trigger_error(__FUNCTION__ . ': Associations of profil "' . $ProfileName . '" is empty');
-            $this->Logger_Err(json_encode(debug_backtrace(), JSON_THROW_ON_ERROR));
-
-            return;
-        }
-
-        $MinValue = $Associations[0][0];
-        $MaxValue = $Associations[count($Associations) - 1][0];
-
-        $this->CreateProfileInteger($ProfileName, $Icon, $Prefix, $Suffix, $MinValue, $MaxValue, 0, $Digits);
-
-        //zunächst werden alte Assoziationen gelöscht
-        //bool IPS_SetVariableProfileAssociation ( string $ProfilName, float $Wert, string $Name, string $Icon, integer $Farbe )
-        foreach (IPS_GetVariableProfile($ProfileName)['Associations'] as $Association) {
-            IPS_SetVariableProfileAssociation($ProfileName, $Association['Value'], '', '', -1);
-        }
-
-        //dann werden die aktuellen eingetragen
-        foreach ($Associations as $Association) {
-            IPS_SetVariableProfileAssociation($ProfileName, $Association[0], $Association[1], '', -1);
-        }
-    }
-
     private function RegisterProperties(): void
     {
         //Properties, die im Konfigurationsformular gesetzt werden können
@@ -1323,51 +1240,37 @@ class SonyTV extends IPSModuleStrict
      */
     private function RegisterVariables(): void
     {
-        if (!IPS_VariableProfileExists(self::PROFILE_POWERSTATUS)) {
-            $this->CreateProfileIntegerAss(
-                self::PROFILE_POWERSTATUS,
-                'Power',
-                '',
-                '',
-                0,
-                [
-                    [self::STATUS_OFF, 'Ausgeschaltet', '', -1],
-                    [self::STATUS_STANDBY, 'Standby', '', -1],
-                    [self::STATUS_ACTIVE, 'Eingeschaltet', '', -1]
-                ]
-            );
-        }
+        $this->RegisterVariableInteger(self::VAR_IDENT_POWER_STATUS, $this->Translate('Status'), [
+            'PRESENTATION' => VARIABLE_PRESENTATION_ENUMERATION,
+            'OPTIONS'      => json_encode([
+                ['Value' => self::STATUS_OFF, 'Caption' => $this->Translate('Off')],
+                ['Value' => self::STATUS_STANDBY, 'Caption' => $this->Translate('Standby')],
+                ['Value' => self::STATUS_ACTIVE, 'Caption' => $this->Translate('On')],
+            ], JSON_THROW_ON_ERROR),
+        ], 10);
 
-        if (!IPS_VariableProfileExists(self::PROFILE_REMOTEKEY)) {
-            $this->WriteListProfile(self::PROFILE_REMOTEKEY, '[]');
-        }
-        if (!IPS_VariableProfileExists(self::PROFILE_SOURCES)) {
-            $this->WriteListProfile(self::PROFILE_SOURCES, '[]');
-        }
-        if (!IPS_VariableProfileExists(self::PROFILE_APPLICATIONS)) {
-            $this->WriteListProfile(self::PROFILE_APPLICATIONS, '[]');
-        }
+        $this->RegisterVariableBoolean(self::VAR_IDENT_AUDIO_MUTE, $this->Translate('Mute'), [
+            'PRESENTATION'   => VARIABLE_PRESENTATION_SWITCH,
+            'USAGE_TYPE'     => 1, // Stumm schalten
+            'USE_ICON_FALSE' => true,
+            'ICON_TRUE'      => 'volume-xmark',
+            'ICON_FALSE'     => 'volume',
+        ], 20);
 
-        if (!IPS_VariableProfileExists(self::PROFILE_VOLUME)) {
-            $this->CreateProfileInteger(
-                'STV.Volume',
-                'Intensity',
-                '',
-                ' %',
-                0,
-                100,
-                1,
-                1
-            );
-        }
+        $volume = [
+            'PRESENTATION' => VARIABLE_PRESENTATION_SLIDER,
+            'MIN'          => 0,
+            'MAX'          => 100,
+            'STEP_SIZE'    => 1,
+            'SUFFIX'       => ' %',
+            'USAGE_TYPE'   => 3, // Lautstärke
+        ];
+        $this->RegisterVariableInteger(self::VAR_IDENT_SPEAKER_VOLUME, $this->Translate('Speaker Volume'), $volume, 30);
+        $this->RegisterVariableInteger(self::VAR_IDENT_HEADPHONE_VOLUME, $this->Translate('Headphone Volume'), $volume, 40);
 
-        $this->RegisterVariableInteger(self::VAR_IDENT_POWER_STATUS, 'Status', self::PROFILE_POWERSTATUS, 10);
-        $this->RegisterVariableBoolean(self::VAR_IDENT_AUDIO_MUTE, 'Mute', '~Switch', 20);
-        $this->RegisterVariableInteger(self::VAR_IDENT_SPEAKER_VOLUME, 'Lautstärke Lautsprecher', self::PROFILE_VOLUME, 30);
-        $this->RegisterVariableInteger(self::VAR_IDENT_HEADPHONE_VOLUME, 'Lautstärke Kopfhörer', self::PROFILE_VOLUME, 40);
-        $this->RegisterVariableInteger(self::VAR_IDENT_SEND_REMOTE_KEY, 'Sende FB Taste', self::PROFILE_REMOTEKEY, 50);
-        $this->RegisterVariableInteger(self::VAR_IDENT_INPUT_SOURCE, 'Eingangsquelle', self::PROFILE_SOURCES, 60);
-        $this->RegisterVariableInteger(self::VAR_IDENT_APPLICATION, 'Starte Applikation', self::PROFILE_APPLICATIONS, 70);
+        $this->registerListVariable(self::VAR_IDENT_SEND_REMOTE_KEY);
+        $this->registerListVariable(self::VAR_IDENT_INPUT_SOURCE);
+        $this->registerListVariable(self::VAR_IDENT_APPLICATION);
 
         // Aktivieren der Statusvariablen
         $this->EnableAction(self::VAR_IDENT_POWER_STATUS);
@@ -1379,6 +1282,30 @@ class SonyTV extends IPSModuleStrict
         $this->EnableAction(self::VAR_IDENT_HEADPHONE_VOLUME);
     }
 
+    /**
+     * Registriert eine Auswahlvariable, deren Optionen aus einer vom TV gelesenen Liste stammen
+     * (Tasten, Eingänge, Apps). Der Wert ist der Index in der Liste, -1 steht für „keine Auswahl".
+     *
+     * @throws \JsonException
+     */
+    private function registerListVariable(string $ident): void
+    {
+        [$name, $position, $list, $field] = match ($ident) {
+            self::VAR_IDENT_SEND_REMOTE_KEY => ['Send Remote Key', 50, $this->getRemoteControllerKeys(), 'name'],
+            self::VAR_IDENT_INPUT_SOURCE    => ['Input Source', 60, $this->getSourceList(), 'title'],
+            self::VAR_IDENT_APPLICATION     => ['Start Application', 70, $this->getApplicationList(), 'title'],
+        };
+
+        $options = [['Value' => -1, 'Caption' => '-']];
+        foreach ($list as $key => $element) {
+            $options[] = ['Value' => $key, 'Caption' => html_entity_decode($element[$field])];
+        }
+
+        $this->RegisterVariableInteger($ident, $this->Translate($name), [
+            'PRESENTATION' => VARIABLE_PRESENTATION_ENUMERATION,
+            'OPTIONS'      => json_encode($options, JSON_THROW_ON_ERROR),
+        ], $position);
+    }
     private function SetInstanceStatus(): void
     {
         $ip = $this->ReadPropertyString(self::PROP_HOST);
@@ -1432,51 +1359,38 @@ class SonyTV extends IPSModuleStrict
     }
 
     /**
-     * Unregister a variable profile.
-     *
-     * @param string $Name The name of the variable profile to unregister.
-     *
-     * @return void
-     * @throws \JsonException
+     * Löscht die Variablenprofile früherer Versionen, sobald keine Variable und kein Diagramm sie mehr nutzt.
      */
-    private function UnregisterProfile(string $Name): void
+    private function removeUnusedLegacyProfiles(): void
     {
-        if (!IPS_VariableProfileExists($Name) || $this->IsProfileInVariableList($Name) || $this->IsProfileInMediaList($Name)) {
-            return;
+        foreach (self::LEGACY_PROFILES as $profile) {
+            if (IPS_VariableProfileExists($profile) && !$this->isProfileInUse($profile)) {
+                IPS_DeleteVariableProfile($profile);
+                $this->Logger_Inf('Variablenprofil gelöscht (ersetzt durch Darstellungen): ' . $profile);
+            }
         }
-
-        // Delete the profile only if it's not used anywhere
-        IPS_DeleteVariableProfile($Name);
     }
 
-    private function IsProfileInVariableList(string $ProfileName): bool
+    private function isProfileInUse(string $profile): bool
     {
-        $instanceID = $this->InstanceID;
-
-        foreach (IPS_GetVariableList() as $VarID) {
-            if (IPS_GetParent($VarID) === $instanceID || IPS_GetVariable($VarID)['VariableCustomProfile'] === $ProfileName
-                || IPS_GetVariable(
-                    $VarID
-                )['VariableProfile'] === $ProfileName) {
+        foreach (IPS_GetVariableList() as $varID) {
+            $variable = IPS_GetVariable($varID);
+            if ($variable['VariableProfile'] === $profile || $variable['VariableCustomProfile'] === $profile) {
                 return true;
             }
         }
-        return false;
-    }
 
-    private function IsProfileInMediaList(string $ProfileName): bool
-    {
         foreach (IPS_GetMediaListByType(MEDIATYPE_CHART) as $mediaID) {
-            $content = json_decode(base64_decode(IPS_GetMediaContent($mediaID)), true, 512, JSON_THROW_ON_ERROR);
-            foreach ($content['axes'] as $axis) {
-                if ($axis['profile'] === $ProfileName) {
+            $content = json_decode((string)base64_decode(IPS_GetMediaContent($mediaID)), true);
+            foreach ($content['axes'] ?? [] as $axis) {
+                if (($axis['profile'] ?? '') === $profile) {
                     return true;
                 }
             }
         }
+
         return false;
     }
-
     private function MsgBox(string $Message): void
     {
         $this->UpdateFormField('MsgText', 'caption', $Message);
