@@ -45,7 +45,8 @@ Die CI (`.github/workflows/check.yml`) fährt `php -l`, php-cs-fixer gegen `.sty
 JSON-Validität, `check_locale.php` und alle `tests/check-*.php`, darunter die Doku-Sperrklinke
 `check-readme.php`.
 
-**Fixtures sind echte Mitschnitte** des KD-75XE9405 (Firmware-Generation 5.4.0), anonymisiert
+**Fixtures sind echte Mitschnitte** des KD-75XE9405 (Firmware-Generation 5.4.0) in den Zuständen
+`standby` und `aktiv`, anonymisiert
 (Seriennummer, MAC, CID). Neue Fixtures nur mitschneiden, nie von Hand bauen; lesende Methoden
 genügen, schaltende (`setPowerStatus`, `requestReboot` …) nie gegen das echte Gerät zum Mitschneiden.
 
@@ -63,4 +64,3 @@ Neue Bibliotheksdaten (Funktionsliste, `library.json`) per `MC_ReloadModule` mit
 - `getRemoteControllerInfo` liefert 146 Tasten, das Profil fasst nur 128 — der Rest fehlt in der
   Auswahl (per `STV_SendRemoteKey` aber erreichbar).
 - `getCommonHeaders()` sendet eine Headerzeile ohne Namen (`'application/json; charset=UTF-8'`).
-- Fixtures für den eingeschalteten Zustand fehlen noch (Lautstärke, laufender Eingang).
