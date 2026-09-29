@@ -150,7 +150,7 @@ class SonyDiscovery extends IPSModuleStrict
         return $config_values;
     }
 
-    private function checkConfiguredDevices($configuredDevices, &$config_values): void
+    private function checkConfiguredDevices(array $configuredDevices, array &$config_values): void
     {
         $discoveredInstanceIDs = array_flip(array_column($config_values, 'instanceID'));
 

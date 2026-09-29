@@ -16,7 +16,9 @@ Symcon-Modulbibliothek zur Steuerung von Sony-Bravia-Fernsehern über deren REST
 
 ## Kommunikation mit dem TV
 
-- JSON-RPC über `POST http://<Host>/sony/<service>`, Authentifizierung per Header `X-Auth-PSK`.
+- JSON-RPC über `POST http://<Host>/sony/<service>` mit `Content-Type: application/json`,
+  Authentifizierung per Header `X-Auth-PSK`. Bis build 29 gingen die Anfragen als `text/xml` samt einer
+  namenlosen Headerzeile raus; der KD-75XE9405 antwortet auf beide Varianten identisch (geprüft 29.09.2026).
   Fernbedienungstasten gehen als SOAP an `/sony/IRCC` (`SendRemoteKey`).
 - **`executeCurl()` ist die einzige Stelle mit Netzverkehr** (Naht für die Tests). Die
   Fehlerbehandlung darüber liegt in `SendCurlPost()`: Listen ignorierter curl- und TV-Fehler
@@ -70,4 +72,8 @@ diesen Index, nicht über den formatierten Text. Die Profile `STV.*` früherer V
 
 ## Offene Punkte
 
-- `getCommonHeaders()` sendet eine Headerzeile ohne Namen (`'application/json; charset=UTF-8'`).
+- `checkConnection()` pingt bei aktiver Instanz bis zu zehnmal mit je 5 s Timeout. Wird der TV
+  vom Netz getrennt, blockiert der erste `UpdateAll` danach bis zu 50 s (gewollt gegen
+  Fehlalarme, aber lang).
+- Ein falscher PSK (`[403, "Forbidden"]`) zeigt sich nur als „TV aus" und einer Logzeile; ein
+  eigener Instanzstatus dafür wäre für Anwender verständlicher.

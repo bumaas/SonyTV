@@ -39,7 +39,6 @@ trait SonyConstants
     private const string ATTR_REMOTECONTROLLERINFO = 'RemoteControllerInfo';
     private const string ATTR_SOURCELIST           = 'SourceList';
     private const string ATTR_APPLICATIONLIST      = 'ApplicationList';
-    private const string ATTR_UUID                 = 'UUID';
 
     private const string VAR_IDENT_INPUT_SOURCE     = 'InputSource';
     private const string VAR_IDENT_POWER_STATUS     = 'PowerStatus';
@@ -534,7 +533,7 @@ class SonyTV extends IPSModuleStrict
      */
     private function getVolumes(): void
     {
-        if (IPS_GetInstance($this->InstanceID)['InstanceStatus'] !== IS_ACTIVE) {
+        if ($this->GetStatus() !== IS_ACTIVE) {
             return;
         }
 
@@ -571,7 +570,7 @@ class SonyTV extends IPSModuleStrict
      */
     private function GetInputSource(): void
     {
-        if (IPS_GetInstance($this->InstanceID)['InstanceStatus'] !== IS_ACTIVE) {
+        if ($this->GetStatus() !== IS_ACTIVE) {
             return;
         }
 
@@ -604,7 +603,7 @@ class SonyTV extends IPSModuleStrict
         foreach ($Sources as $key => $source) {
             if ($source['uri'] === $json_a['result'][0]['uri']) {
                 $this->SetValue(self::VAR_IDENT_INPUT_SOURCE, $key);
-                $this->SetValue('Application', -1);
+                $this->SetValue(self::VAR_IDENT_APPLICATION, -1);
             }
         }
     }
@@ -625,7 +624,7 @@ class SonyTV extends IPSModuleStrict
     }
 
     /**
-     * Die ursprüngliche Methode wird schlanker und fokussiert sich auf das Update.
+     * Fragt den Power-Status ab und setzt Status-Variable und Instanzstatus.
      */
     private function getPowerStatus(): ?int
     {
@@ -658,7 +657,7 @@ class SonyTV extends IPSModuleStrict
         return $isConnected;
     }
 
-    private function executeRestApiRequestWithRetry($endpoint, $method): false|string
+    private function executeRestApiRequestWithRetry(string $endpoint, string $method): false|string
     {
         // Trying twice in case of a failure
         $ret = $this->callRestApi($endpoint, $method, [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
@@ -772,7 +771,7 @@ class SonyTV extends IPSModuleStrict
         }
     }
 
-    private function GetUriOfSource($Sources, $Name): string
+    private function GetUriOfSource(array $Sources, string $Name): string
     {
         foreach ($Sources as $source) {
             if ($source['title'] === $Name) {
@@ -805,7 +804,7 @@ class SonyTV extends IPSModuleStrict
     /**
      * @throws \JsonException
      */
-    private function ListAPIInfoOfService($servicename, &$return): void
+    private function ListAPIInfoOfService(string $servicename, string &$return): void
     {
         $return .= 'Service: ' . $servicename . PHP_EOL;
         // der Service 'Contentshare' hat wohl keine Funktionen → 404 wird ignoriert
@@ -825,7 +824,7 @@ class SonyTV extends IPSModuleStrict
         }
     }
 
-    private function getResults($response): array
+    private function getResults(string $response): array
     {
         $arr = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
 
@@ -1075,8 +1074,7 @@ class SonyTV extends IPSModuleStrict
         $headers[] = 'Accept: */*';
         $headers[] = 'Cache-Control: no-cache';
         $headers[] = 'Connection: close';
-        $headers[] = 'Content-Type: text/xml; charset=UTF-8';
-        $headers[] = 'application/json; charset=UTF-8';
+        $headers[] = 'Content-Type: application/json; charset=UTF-8';
         $headers[] = 'Pragma: no-cache';
         $headers[] = 'X-Auth-PSK: ' . $this->ReadPropertyString(self::PROP_PSK);
         $headers[] = 'Content-Length: ' . strlen($data);
@@ -1101,7 +1099,7 @@ class SonyTV extends IPSModuleStrict
         return true;
     }
 
-    private function createSourceList($response): array
+    private function createSourceList(string $response): array
     {
         $json_a     = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
         $sourceList = [];
@@ -1150,71 +1148,6 @@ class SonyTV extends IPSModuleStrict
         return true;
     }
 
-    /*
-        private function ExtractAndSaveCookie($return): bool
-        {
-            $CookieFound = false;
-            [$headers] = explode("\r\n\r\n", $return, 2);
-            $headers = explode("\n", $headers);
-            if (count($headers) === 0) {
-                trigger_error('Unerwarteter Header: ' . $return);
-            }
-
-            $Cookie = [];
-            foreach ($headers as $SetCookie) {
-                if (stripos($SetCookie, 'Set-Cookie:') !== false) {
-                    // Beispiele:
-                    // Set-Cookie: auth=246554AA89E869DCD1FFC5F8C726AF5803F3AC6A; Path=/sony/; Max-Age=1209600; Expires=Do., 26 Apr. 2018 14:31:14 GMT+00:00
-                    // Set-Cookie: auth=5c62b5874a067cecc1561803d08d5090c9a8724b8e1413a3aedc06c289326cad; path=/sony/; max-age=1209600; expires=Sat, 05-May-2018 09:45:38 GMT;
-                    $arr                      = $this->GetCookieElements(substr($SetCookie, strlen('Set-Cookie: ')));
-                    $Cookie['auth']           = $arr['auth'];
-                    $Cookie['ExpirationDate'] = time() + $arr['max-age'];
-                    $this->WriteAttributeString(self::ATTR_COOKIE, json_encode($Cookie, JSON_THROW_ON_ERROR, 512));
-                    $CookieFound = true;
-                    break;
-                }
-            }
-
-            $this->Logger_Dbg(__FUNCTION__, 'Cookie: ' . json_encode($Cookie, JSON_THROW_ON_ERROR, 512));
-            return $CookieFound;
-        }
-
-        private function GetCookieElements($SetCookie): array
-        {
-            $ret      = [];
-            $elements = explode(';', $SetCookie);
-            foreach ($elements as $element) {
-                $expl = explode('=', $element);
-                if (count($expl) === 2) {
-                    $ret[strtolower(trim($expl[0]))] = $expl[1];
-                }
-            }
-
-            return $ret;
-        }
-     */
-
-    /*
-       private function GetAuthorizationParams(): array
-       {
-           $Nickname = $this->ReadPropertyString('Nickname');
-           $uuid     = $this->ReadAttributeString(self::ATTR_UUID);
-
-           return [
-               [
-                   'clientid' => $uuid,
-                   'nickname' => $Nickname,
-                   'level'    => 'private'
-               ],
-               [
-                   [
-                       'function' => 'WOL',
-                       'value'    => 'yes'
-                   ]
-               ]
-           ];
-       }
-     */
     private function RegisterProperties(): void
     {
         //Properties, die im Konfigurationsformular gesetzt werden können
@@ -1229,7 +1162,6 @@ class SonyTV extends IPSModuleStrict
 
     private function RegisterAttributes(): void
     {
-        $this->RegisterAttributeString(self::ATTR_UUID, uniqid('', true));
         $this->RegisterAttributeString(self::ATTR_REMOTECONTROLLERINFO, json_encode(null, JSON_THROW_ON_ERROR));
         $this->RegisterAttributeString(self::ATTR_SOURCELIST, json_encode([], JSON_THROW_ON_ERROR));
         $this->RegisterAttributeString(self::ATTR_APPLICATIONLIST, json_encode([], JSON_THROW_ON_ERROR));
@@ -1312,7 +1244,7 @@ class SonyTV extends IPSModuleStrict
         $this->SetStatus($this->determineStatus($ip));
     }
 
-    private function determineStatus($ip): int
+    private function determineStatus(string $ip): int
     {
         if ($ip === '') {
             return self::STATUS_INST_IP_IS_EMPTY;

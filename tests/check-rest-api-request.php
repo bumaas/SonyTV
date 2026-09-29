@@ -20,6 +20,14 @@ pruefe(count($m->anfragen) === 1, 'genau eine Anfrage an den TV');
 pruefe($m->anfragen[0]['url'] === 'http://192.168.178.21/sony/avContent', 'URL aus Host und Service');
 pruefe($m->anfragen[0]['params'] === [] && $m->anfragen[0]['version'] === '1.0', 'Parameterliste und Version im Request');
 
+// Header: jede Zeile "Name: Wert", JSON-Anfrage mit passendem Content-Type und PSK
+$header = $m->anfragen[0]['headers'];
+$ohneName = array_filter($header, fn (string $zeile): bool => !preg_match('/^[A-Za-z-]+: /', $zeile));
+pruefe($ohneName === [], 'jede Headerzeile hat einen Namen' . ($ohneName === [] ? '' : ' (ohne: ' . implode(' | ', $ohneName) . ')'));
+$contentTypes = array_values(array_filter($header, fn (string $zeile): bool => stripos($zeile, 'Content-Type:') === 0));
+pruefe($contentTypes === ['Content-Type: application/json; charset=UTF-8'], 'genau ein Content-Type, application/json');
+pruefe(in_array('X-Auth-PSK: 0000', $header, true), 'X-Auth-PSK mit dem eingestellten Pre-Shared Key');
+
 $m->antworten['avContent/setPlayContent'] = '{"result":[],"id":1}';
 $m->marke();
 $m->SendRestAPIRequest('avContent', 'setPlayContent', '[{"uri":"extInput:hdmi?port=2"}]', '1.0');
