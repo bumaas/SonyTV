@@ -52,7 +52,9 @@ Symcon-Modulbibliothek zur Steuerung von Sony-Bravia-Fernsehern über deren REST
   einer App im Vordergrund, bleibt der Zustand deshalb bis zu 90 s unbekannt. Was der TV während des
   Hochfahrens wirklich meldet, ist nicht mitgeschnitten.
 - Ein **einzelner Aussetzer** von `getPowerStatus` (im Mitschnitt belegt: curl-Fehler 28, drei Sekunden später
-  wieder eine Antwort) ändert nichts; `UpdateAll` liefert dann `false` für „Zustand unbekannt".
+  wieder eine Antwort) ändert nichts; `UpdateAll` liefert dann `false` für „Zustand unbekannt". Eine
+  Fehlerantwort zählt wie keine Antwort: `executeRestApiRequestWithRetry()` wiederholt nach 3 s (am 01.10.2026
+  kam `{"error":[404,"Not Found"]}`, Fixture `fehler-404`).
 
 ## Nähte für die Tests
 
@@ -126,8 +128,8 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
 
 - **MCP-Test vom 01.10.2026** (Regeln in `~\.claude\skills\symcon-modul-repo\mcp-tauglichkeit.md`): erledigt
   sind Regel 8, die Wertebereiche und Regel 1 (PSK-Hinweis in Formular und Konfigurator, `tests/check-form-help.php`;
-  build 36) sowie Regel 3 (Status 201 und 203, `tests/check-status-reachability.php`; build 37). Offen: Rohmeldung
-  `Unexpected return: {"error":[404,…]}` aus `fetchPowerStatus()`, Flattern im Standby nach einem verpassten
+  build 36) sowie Regel 3 (Status 201 und 203, `tests/check-status-reachability.php`; build 37) und die Rohmeldung
+  zur 404-Antwort (`tests/check-power-status-404.php`; build 38). Offen: Flattern im Standby nach einem verpassten
   Ping (Regel 11, mit Status 201 jetzt auffälliger), keine Erklärfunktion und Knopf-Ergebnisse nur als Popup
   (Regeln 5, 7), „Standby" als Schaltwert sendet dasselbe wie „Aus".
 - **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die

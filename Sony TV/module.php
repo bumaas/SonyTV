@@ -800,7 +800,7 @@ class SonyTV extends IPSModuleStrict
 
         $status = $this->getResult($apiResult)[0]['status'] ?? null;
         if (!is_string($status)) {
-            trigger_error('Unexpected return: ' . $apiResult);
+            $this->Logger_Inf('Unexpected answer of the TV to getPowerStatus: ' . $apiResult);
             return null;
         }
 
@@ -879,13 +879,17 @@ class SonyTV extends IPSModuleStrict
      */
     private function executeRestApiRequestWithRetry(string $endpoint, string $method): false|string
     {
-        // Trying twice in case of a failure
-        $ret = $this->callRestApi($endpoint, $method, [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
-        if ($ret === false) {
-            $this->pause(3);
+        // zwei Versuche; eine Fehlerantwort zählt wie keine Antwort (am 01.10.2026 kam {"error":[404,"Not Found"]})
+        for ($attempt = 1; ; $attempt++) {
             $ret = $this->callRestApi($endpoint, $method, [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]);
+            if ($ret !== false && $this->getResult($ret) !== null) {
+                return $ret;
+            }
+            if ($attempt === 2) {
+                return false;
+            }
+            $this->pause(3);
         }
-        return $ret;
     }
 
     private function handlePowerStatusFailure(string $message): void

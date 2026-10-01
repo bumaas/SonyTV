@@ -11,6 +11,7 @@ Je Datei die unveränderte Antwort des TV auf `<service>_<methode>`.
 | `illegal-state` | TV eingeschaltet, `getPlayingContentInfo` meldet Fehler 7. Aufgezeichnet um 19:45:07, kurz nach dem Einschalten; welcher Inhalt dabei lief, ist nicht festgehalten. | 29.09.2026 |
 | `tuner` | TV-Tuner, Sender „RTL HD" (`tv:dvbt`). Dazu die Antwort auf `setPlayContent`, mit dem umgeschaltet wurde. | 29.09.2026 |
 | `spiegelung` | Bildschirmspiegelung (`extInput:widi?port=1`), ohne verbundenes Gerät. Dazu die Antwort auf `setPlayContent`. | 29.09.2026 |
+| `fehler-404` | Antwort `{"error":[404,"Not Found"]}` auf `getPowerStatus`, am nuc um 18:18:30. Nicht direkt mitgeschnitten: Das Modul hat die Antwort unverändert ins Log geschrieben, die Datei ist aus dieser Logzeile übernommen. In welchem Zustand der TV war, ist nicht bekannt. | 01.10.2026 |
 | `app-im-vordergrund` | Netflix im Vordergrund, über `STV_StartApplication` gestartet: `getPlayingContentInfo` meldet dauerhaft Fehler 7. Dieselbe Antwort kam vorher, als Netflix mit der Fernbedienung gestartet war. | 29.09.2026 |
 
 Im selben Mitschnitt wie `illegal-state`: ein einzelner Aussetzer bei eingeschaltetem TV (curl-Fehler 28 um
