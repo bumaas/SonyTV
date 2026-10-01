@@ -50,4 +50,19 @@ pruefe($psk !== false && $elemente[$psk - 1]['type'] === 'Label' && str_contains
 $host = array_search('Host', $namen, true);
 pruefe($host !== false && $elemente[$host - 1]['type'] === 'Label' && str_contains($elemente[$host - 1]['caption'], 'host name'), 'vor dem Feld Host steht, dass ein Hostname nicht geht');
 
+// Blindtest-Wiederholung 01.10.2026 (build 42): Der Agent konnte nicht ableiten, dass das Modul einen abgelehnten
+// Schlüssel selbst erkennt, und fand die Parameter der STV-Funktionen nirgends (IPS_GetFunction nennt nur Typen).
+pruefe(str_contains($elemente[$psk - 1]['caption'], 'status 203'), 'Hinweis zum Schlüssel: ein abgelehnter Schlüssel setzt Status 203');
+$verborgen = implode("\n", array_column(array_filter(flach($form['actions']), static fn (array $e): bool => $e['type'] === 'Label' && ($e['visible'] ?? true) === false), 'caption'));
+foreach ([
+    'STV_SetPowerStatus($InstanceID, true',
+    'STV_SetInputSource($InstanceID, ',
+    'STV_StartApplication($InstanceID, ',
+    'STV_SendRemoteKey($InstanceID, ',
+    'STV_SetSpeakerVolume($InstanceID, ',
+    'STV_SetAudioMute($InstanceID, ',
+] as $aufruf) {
+    pruefe(str_contains($verborgen, $aufruf), "unsichtbarer Hinweis nennt {$aufruf}…");
+}
+
 ergebnis();

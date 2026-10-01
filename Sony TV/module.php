@@ -414,7 +414,7 @@ class SonyTV extends IPSModuleStrict
             'active'  => 'On',
             default   => $status,
         }));
-        $add('info', 'Switching PowerStatus: 2 = On; 0 (Off) and 1 (Standby) both put the TV into standby, it cannot be switched fully off over the network');
+        $add('info', 'Switching PowerStatus: 2 = On; 0 (Off / not reachable) and 1 (Standby) both put the TV into standby, it cannot be switched fully off over the network');
 
         // getPlayingContentInfo verlangt den Schlüssel; mit richtigem Schlüssel kommt ein Ergebnis, 40005 (Standby)
         // oder 7 (App im Vordergrund), mit falschem 403 (alles mitgeschnitten)
@@ -1533,7 +1533,7 @@ class SonyTV extends IPSModuleStrict
         $this->RegisterVariableInteger(self::VAR_IDENT_POWER_STATUS, $this->Translate('Status'), [
             'PRESENTATION' => VARIABLE_PRESENTATION_ENUMERATION,
             'OPTIONS'      => json_encode([
-                ['Value' => self::STATUS_OFF, 'Caption' => $this->Translate('Off')],
+                ['Value' => self::STATUS_OFF, 'Caption' => $this->Translate('Off / not reachable')],
                 ['Value' => self::STATUS_STANDBY, 'Caption' => $this->Translate('Standby')],
                 ['Value' => self::STATUS_ACTIVE, 'Caption' => $this->Translate('On')],
             ], JSON_THROW_ON_ERROR),

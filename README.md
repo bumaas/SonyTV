@@ -65,7 +65,7 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 | :----- | :-------- | :------- |
 | aktiv | Fernseher antwortet (eingeschaltet oder Standby) | – |
 | inaktiv | Zustand noch unbekannt, etwa beim Übernehmen während der Fernseher startet | – |
-| Fernseher antwortet nicht | kein Ping, oder `getPowerStatus` bleibt zweimal in Folge aus; die Variable *Status* steht auf *Ausgeschaltet* | ist er vom Netz getrennt? Ist *Remote start* eingeschaltet? Stimmt die IP-Adresse? |
+| Fernseher antwortet nicht | kein Ping, oder `getPowerStatus` bleibt zweimal in Folge aus; die Variable *Status* steht auf *Aus / nicht erreichbar* | ist er vom Netz getrennt? Ist *Remote start* eingeschaltet? Stimmt die IP-Adresse? |
 | Der Fernseher hat den Pre-Shared Key abgelehnt | der Fernseher antwortet mit Fehler 403 | denselben Schlüssel wie am Fernseher eintragen |
 | IP-Adresse darf nicht leer sein | `Host` fehlt | IP-Adresse eintragen |
 | IP-Adresse ist nicht gültig | `Host` ist keine IP-Adresse | IP-Adresse statt Hostnamen eintragen |
@@ -79,7 +79,7 @@ Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualis
 
 | Name | Ident | Darstellung | Bedeutung |
 | :--- | :---- | :---------- | :-------- |
-| Status | `PowerStatus` | Aufzählung | Ausgeschaltet, Standby oder Eingeschaltet. Auswahl *Eingeschaltet* schaltet ein; *Ausgeschaltet* und *Standby* schalten beide in den Standby – ganz ausschalten lässt sich der Fernseher über das Netzwerk nicht. *Ausgeschaltet* erscheint nur, wenn der Fernseher nicht antwortet. |
+| Status | `PowerStatus` | Aufzählung | Aus / nicht erreichbar, Standby oder Eingeschaltet. Auswahl *Eingeschaltet* schaltet ein; *Aus / nicht erreichbar* und *Standby* schalten beide in den Standby – ganz ausschalten lässt sich der Fernseher über das Netzwerk nicht. *Aus / nicht erreichbar* erscheint nur, wenn der Fernseher nicht antwortet. |
 | Mute | `AudioMute` | Schalter | Stummschaltung |
 | Lautstärke Lautsprecher | `SpeakerVolume` | Schieberegler 0–100 % | Lautstärke der Lautsprecher |
 | Lautstärke Kopfhörer | `HeadphoneVolume` | Schieberegler 0–100 % | Lautstärke des Kopfhörerausgangs |
@@ -89,7 +89,7 @@ Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualis
 
 Die Auswahllisten für Tasten, Eingänge und Apps kommen vom Fernseher selbst und stehen direkt an der jeweiligen Variable – bei mehreren Fernsehern also je Gerät getrennt und ohne Begrenzung der Anzahl. Jeder Eintrag hat eine feste Nummer als Wert. Sie bleibt ihm erhalten, auch wenn später Apps hinzukommen oder entfallen; -1 steht für „keine Auswahl“.
 
-Die Variablen zeigen einen Eingang, eine App oder eine Taste erst, wenn der Fernseher den Befehl angenommen hat. Läuft keiner der Eingänge aus der Liste, steht *Eingangsquelle* auf „-“. *Ausgeschaltet* heißt: Der Fernseher antwortet nicht im Netzwerk.
+Die Variablen zeigen einen Eingang, eine App oder eine Taste erst, wenn der Fernseher den Befehl angenommen hat. Läuft keiner der Eingänge aus der Liste, steht *Eingangsquelle* auf „-“. *Aus / nicht erreichbar* heißt: Der Fernseher antwortet nicht im Netzwerk.
 
 **Hinweis für Nutzer älterer Versionen:** Bis 2.1 build 27 nutzte das Modul die Variablenprofile `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` und `STV.Applications`. Sie werden automatisch gelöscht, sobald keine Variable und kein Diagramm sie mehr verwendet. Hat eine Variable eines dieser Profile als eigenes Profil eingetragen, bleibt es dort stehen und wird nicht mehr aktualisiert – dann in den Variableneinstellungen das eigene Profil entfernen, damit die Darstellung des Moduls greift. Solange Symcon ein Diagramm nicht lesen kann, bleiben die Profile vorsichtshalber erhalten.
 
@@ -166,11 +166,11 @@ $Antwort = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri"
 ## 6. Grenzen
 
 - **Sony dokumentiert die Schnittstelle nicht für Heimgeräte.** Das Modul nutzt die Schnittstelle der professionellen Bravia-Displays, die auch die Heimgeräte sprechen. Getestet wurde es mit KD-65XG8588, KD-75XE9405, KD-65X8505B, KD-55XE8505, KD-55XE9005, KD-55XE8096, KD-43XD8305, KD-55A1BAEP und KDL-50W805B. Andere Modelle funktionieren meist ebenfalls; Rückmeldungen dazu gern im Forum.
-- **Ganz ausgeschaltet ist nicht Standby.** Ist der Fernseher vom Strom getrennt oder hat er das Netzwerk im Standby abgeschaltet, kann das Modul ihn nicht einschalten und meldet *Ausgeschaltet*.
+- **Ganz ausgeschaltet ist nicht Standby.** Ist der Fernseher vom Strom getrennt oder hat er das Netzwerk im Standby abgeschaltet, kann das Modul ihn nicht einschalten und meldet *Aus / nicht erreichbar*.
 - **Nur die physischen Eingänge.** *Eingangsquelle* kennt HDMI-, AV- und Component-Eingänge. Über HDMI-CEC angemeldete Geräte, der eingebaute Tuner und die Bildschirmspiegelung stehen nicht in der Liste; läuft etwas anderes als einer dieser Eingänge, zeigt die Variable „-“.
 - **Apps kennt das Modul nur, wenn es sie selbst gestartet hat.** Der Fernseher verrät nicht, welche App gerade läuft. *Starte Applikation* zeigt deshalb die zuletzt über Symcon gestartete App und geht auf „-“, sobald wieder ein Eingang oder ein Sender läuft. Eine mit der Fernbedienung gestartete App erscheint nicht; *Eingangsquelle* steht dann auf „-“.
 - **Nach dem Einschalten dauert es.** Während der Fernseher startet, meldet er sich bereits als eingeschaltet, obwohl er noch nicht bedienbar ist. Das Modul wartet deshalb bis zu 90 Sekunden, bevor es *Eingeschaltet* setzt.
-- **Aussetzer werden abgefangen.** Antwortet ein eingeschalteter Fernseher oder einer im Standby nicht mehr, prüft das Modul die Verbindung dreimal mit je einer Sekunde, bevor es *Ausgeschaltet* meldet. Ein einzelner Aussetzer der Schnittstelle ändert den Status nicht, erst der zweite in Folge. Als Aussetzer zählt auch eine Fehlerantwort wie `404 Not Found`.
+- **Aussetzer werden abgefangen.** Antwortet ein eingeschalteter Fernseher oder einer im Standby nicht mehr, prüft das Modul die Verbindung dreimal mit je einer Sekunde, bevor es *Aus / nicht erreichbar* meldet. Ein einzelner Aussetzer der Schnittstelle ändert den Status nicht, erst der zweite in Folge. Als Aussetzer zählt auch eine Fehlerantwort wie `404 Not Found`.
 - **Ein falscher Pre-Shared Key fällt erst beim ersten Befehl mit Schlüssel auf.** Seinen Ein/Aus-Zustand meldet der Fernseher auch ohne gültigen Schlüssel. Im Standby fragt das Modul nur diesen ab; dann zeigt sich der Fehler erst beim Einlesen der Listen oder beim ersten Schaltbefehl.
 
 ## 7. Begriffe

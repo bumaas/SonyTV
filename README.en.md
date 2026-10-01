@@ -65,7 +65,7 @@ Under *Expert Parameters* there are three switches for logging:
 | :---- | :------ | :--------- |
 | active | the TV answers (on or in standby) | – |
 | inactive | state not known yet, e.g. when applying while the TV is starting | – |
-| TV does not answer | no ping, or `getPowerStatus` fails twice in a row; the variable *Status* shows *Off* | is it disconnected from mains? Is *Remote start* switched on? Is the IP address correct? |
+| TV does not answer | no ping, or `getPowerStatus` fails twice in a row; the variable *Status* shows *Off / not reachable* | is it disconnected from mains? Is *Remote start* switched on? Is the IP address correct? |
 | The TV rejected the Pre-Shared Key | the TV answers with error 403 | enter the same key as on the TV |
 | IP address can not be empty | `Host` is missing | enter the IP address |
 | IP address is not valid | `Host` is not an IP address | enter an IP address instead of a host name |
@@ -79,7 +79,7 @@ With any of the three configuration errors (IP address, interval) no update runs
 
 | Name | Ident | Presentation | Meaning |
 | :--- | :---- | :----------- | :------ |
-| Status | `PowerStatus` | Enumeration | Off, Standby or On. Selecting *On* switches the TV on; *Off* and *Standby* both put it into standby – the TV cannot be switched fully off over the network. *Off* only appears when the TV does not answer. |
+| Status | `PowerStatus` | Enumeration | Off / not reachable, Standby or On. Selecting *On* switches the TV on; *Off / not reachable* and *Standby* both put it into standby – the TV cannot be switched fully off over the network. *Off / not reachable* only appears when the TV does not answer. |
 | Mute | `AudioMute` | Switch | mute |
 | Speaker Volume | `SpeakerVolume` | Slider 0–100 % | volume of the speakers |
 | Headphone Volume | `HeadphoneVolume` | Slider 0–100 % | volume of the headphone output |
@@ -89,7 +89,7 @@ With any of the three configuration errors (IP address, interval) no update runs
 
 The selection lists for keys, inputs and apps come from the TV itself and are stored directly at the respective variable – separately for each TV if there are several, and without a limit on their number. Every entry has a fixed number as its value. It keeps that number even if apps are added or removed later; -1 means "no selection".
 
-The variables show an input, an app or a key only after the TV has accepted the command. If none of the inputs in the list is playing, *Input Source* shows "-". *Off* means: the TV does not answer on the network.
+The variables show an input, an app or a key only after the TV has accepted the command. If none of the inputs in the list is playing, *Input Source* shows "-". *Off / not reachable* means: the TV does not answer on the network.
 
 **Note for users of older versions:** Up to 2.1 build 27 the module used the variable profiles `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` and `STV.Applications`. They are deleted automatically as soon as no variable and no chart uses them any more. If a variable has one of these profiles set as its custom profile, it stays there and is no longer updated – remove the custom profile in the variable settings so that the module's presentation takes effect. As long as Symcon cannot read one of the charts, the profiles are kept as a precaution.
 
@@ -166,11 +166,11 @@ $Answer = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri":
 ## 6. Limitations
 
 - **Sony does not document the interface for consumer TVs.** The module uses the interface of the professional Bravia displays, which the consumer TVs speak as well. It has been tested with KD-65XG8588, KD-75XE9405, KD-65X8505B, KD-55XE8505, KD-55XE9005, KD-55XE8096, KD-43XD8305, KD-55A1BAEP and KDL-50W805B. Other models usually work too; feedback is welcome in the forum.
-- **Completely off is not standby.** If the TV is disconnected from power or has switched off its network in standby, the module cannot switch it on and reports *Off*.
+- **Completely off is not standby.** If the TV is disconnected from power or has switched off its network in standby, the module cannot switch it on and reports *Off / not reachable*.
 - **Physical inputs only.** *Input Source* knows HDMI, AV and component inputs. Devices announced via HDMI-CEC, the built-in tuner and screen mirroring are not in the list; if anything other than one of these inputs is playing, the variable shows "-".
 - **The module only knows apps it has started itself.** The TV does not tell which app is running. *Start Application* therefore shows the app last started via Symcon and changes to "-" as soon as an input or a channel is playing again. An app started with the remote control does not appear; *Input Source* then shows "-".
 - **Switching on takes a while.** While the TV is booting it already reports itself as on although it cannot be operated yet. The module therefore waits up to 90 seconds before setting *On*.
-- **Dropouts are absorbed.** If a TV that is on or in standby stops answering, the module checks the connection three times with one second each before reporting *Off*. A single dropout of the interface does not change the status, only the second one in a row does. An error answer such as `404 Not Found` counts as a dropout as well.
+- **Dropouts are absorbed.** If a TV that is on or in standby stops answering, the module checks the connection three times with one second each before reporting *Off / not reachable*. A single dropout of the interface does not change the status, only the second one in a row does. An error answer such as `404 Not Found` counts as a dropout as well.
 - **A wrong pre-shared key only shows with the first command that needs the key.** The TV reports its power state even without a valid key. In standby the module only queries that state; the error then shows when the lists are read or with the first switching command.
 
 ## 7. Terms

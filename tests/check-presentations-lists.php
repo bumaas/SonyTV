@@ -45,7 +45,7 @@ foreach (['STV.Applications', 'STV.PowerStatus', 'STV.Volume'] as $profil) {
 }
 
 // Feste Darstellungen
-pruefe(optionen($m, 'PowerStatus') === [0 => 'Off', 1 => 'Standby', 2 => 'On'], 'PowerStatus: Aufzählung Off/Standby/On');
+pruefe(optionen($m, 'PowerStatus') === [0 => 'Off / not reachable', 1 => 'Standby', 2 => 'On'], 'PowerStatus: Aufzählung „Off / not reachable"/Standby/On (0 heißt: antwortet nicht)');
 pruefe(darstellung($m, 'AudioMute')['PRESENTATION'] === VARIABLE_PRESENTATION_SWITCH, 'AudioMute: Schalter');
 foreach (['SpeakerVolume', 'HeadphoneVolume'] as $ident) {
     $d = darstellung($m, $ident);

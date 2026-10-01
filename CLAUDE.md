@@ -122,7 +122,8 @@ Neue Bibliotheksdaten (Funktionsliste, `library.json`) per `MC_ReloadModule` mit
 ## Darstellungen und Listenwerte
 
 Alle Variablen nutzen Darstellungen (seit 2.1 build 28). Tasten, Eingänge und Apps stehen als Optionen einer
-Aufzählung an der Variable (`registerListVariable()`).
+Aufzählung an der Variable (`registerListVariable()`). `PowerStatus` hat die Optionen 0 „Aus / nicht erreichbar"
+(der TV antwortet nicht; ganz ausschalten geht über das Netz nicht), 1 Standby, 2 Eingeschaltet.
 
 **Der Wert eines Eintrags ist eine feste Nummer**, keine Position: Das Attribut `ListValues` hält je Ident die
 Zuordnung Schlüssel → Wert (Eingänge und Apps nach `uri`, Tasten nach `name`) und wird nie kleiner. Neue
@@ -147,7 +148,11 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
   unsichtbarer Hinweis im Formular, `tests/check-self-test.php`; build 40). „Aus" (0) und „Standby" (1) schalten
   beide in den Standby, ganz aus geht über das Netz nicht; Entscheidung Burkhard: beide erlaubt lassen, Formular
   (unsichtbar), Selbsttest und README sagen es (build 41). Die englischen Variablennamen der Altinstanz #36393
-  sind am 01.10.2026 von Hand auf die deutschen gesetzt; das Modul benennt nichts um. Offen: Blindtest wiederholen.
+  sind am 01.10.2026 von Hand auf die deutschen gesetzt; das Modul benennt nichts um. Blindtest an build 42
+  wiederholt und bestanden (Protokoll im Projekt Eigenes, `nuc\checks\2026-10-01_mcp-evaluierung.md`); dessen
+  Wortlaut-Punkte in build 43: Option 0 heißt „Aus / nicht erreichbar" (Entscheidung Burkhard), der PSK-Hinweis
+  nennt Status 203, ein unsichtbarer Hinweis die Parameter der `STV_`-Funktionen. Nicht im Modul lösbar:
+  `trigger_error` hängt „in …\module.php on line N" an jede Meldung (PHP-Fehlerausgabe, bei HomeAssistant genauso).
 - **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die
   Antwort auf `setActiveApp`.
 - Der Kopfhörer-Eintrag von `getVolumeInformation` schreibt ebenfalls `AudioMute` und kann den Wert des
