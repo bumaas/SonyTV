@@ -18,6 +18,8 @@
 
   ],
   "actions":  [
+    {"type": "Button", "caption": "Run self test (switches nothing)", "onClick": "echo STV_RunSelfTest($id);"},
+    {"type": "Label", "visible": false, "caption": "For scripts: STV_RunSelfTest($InstanceID) returns the self test as text (configuration, reachability, Pre-Shared Key, lists; one line per check, last line 'N errors, M warnings') and switches nothing. The buttons below are IPS_RequestAction($InstanceID, '<Ident>', 0) with the idents UpdateStatusVariables, UpdateApplicationList, GetSourceListInfo and UpdateRemoteKeyList; they return false with a warning on failure. The lists themselves are the options of the variables SendRemoteKey, InputSource and Application; STV_ReadApplicationList($InstanceID) returns the apps as JSON."},
     {"type": "Label", "caption": "With 'Update status variables', the variables can be updated once regardless of the set interval."},
     {"type": "Button", "caption": "Update status variables", "onClick": "IPS_RequestAction($id, 'UpdateStatusVariables', 0);"},
     {"type": "Label", "caption": "With 'Update application list' the installed apps are read in again."},

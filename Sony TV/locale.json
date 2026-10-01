@@ -37,6 +37,8 @@
             "Mute": "Mute",
             "Speaker Volume": "Lautstärke Lautsprecher",
             "Headphone Volume": "Lautstärke Kopfhörer",
+            "Run self test (switches nothing)": "Selbsttest ausführen (schaltet nichts)",
+            "For scripts: STV_RunSelfTest($InstanceID) returns the self test as text (configuration, reachability, Pre-Shared Key, lists; one line per check, last line 'N errors, M warnings') and switches nothing. The buttons below are IPS_RequestAction($InstanceID, '<Ident>', 0) with the idents UpdateStatusVariables, UpdateApplicationList, GetSourceListInfo and UpdateRemoteKeyList; they return false with a warning on failure. The lists themselves are the options of the variables SendRemoteKey, InputSource and Application; STV_ReadApplicationList($InstanceID) returns the apps as JSON.": "Für Skripte: STV_RunSelfTest($InstanceID) liefert den Selbsttest als Text (Konfiguration, Erreichbarkeit, Pre-Shared Key, Listen; eine Zeile je Prüfung, letzte Zeile 'N errors, M warnings') und schaltet nichts. Die Knöpfe darunter sind IPS_RequestAction($InstanceID, '<Ident>', 0) mit den Idents UpdateStatusVariables, UpdateApplicationList, GetSourceListInfo und UpdateRemoteKeyList; bei einem Fehlschlag liefern sie false mit einer Warnung. Die Listen selbst sind die Optionen der Variablen SendRemoteKey, InputSource und Application; STV_ReadApplicationList($InstanceID) liefert die Apps als JSON.",
             "Send Remote Key": "Sende FB Taste",
             "Input Source": "Eingangsquelle",
             "Start Application": "Starte Applikation",

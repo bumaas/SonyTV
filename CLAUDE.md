@@ -56,6 +56,13 @@ Symcon-Modulbibliothek zur Steuerung von Sony-Bravia-Fernsehern über deren REST
   Fehlerantwort zählt wie keine Antwort: `executeRestApiRequestWithRetry()` wiederholt nach 3 s (am 01.10.2026
   kam `{"error":[404,"Not Found"]}`, Fixture `fehler-404`).
 
+## Selbsttest
+
+`STV_RunSelfTest()` (Knopf im Formular, für Skripte und KI im unsichtbaren Label daneben beschrieben) prüft
+Konfiguration, Ping, `getPowerStatus`, den Schlüssel über `getPlayingContentInfo` (richtig: Ergebnis, 40005 oder
+7; falsch: 403 — alles mitgeschnitten) und die drei Listen. Er schaltet nichts und schreibt keine Variable;
+nur `noteAuthentication()` kann den Instanzstatus dabei auf 203 setzen, was dann auch stimmt.
+
 ## Nähte für die Tests
 
 Alles, was im Betrieb ins Netz geht, wartet oder vom Kernel abhängt, läuft über eine überschreibbare
@@ -130,8 +137,9 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
   sind Regel 8, die Wertebereiche und Regel 1 (PSK-Hinweis in Formular und Konfigurator, `tests/check-form-help.php`;
   build 36) sowie Regel 3 (Status 201 und 203, `tests/check-status-reachability.php`; build 37) und die Rohmeldung
   zur 404-Antwort (`tests/check-power-status-404.php`; build 38), das Flattern im Standby (Regel 11, drei Pings
-  auch im Standby, `tests/check-connection.php`; build 39). Offen: keine Erklärfunktion und Knopf-Ergebnisse nur
-  als Popup (Regeln 5, 7), „Standby" als Schaltwert sendet dasselbe wie „Aus".
+  auch im Standby, `tests/check-connection.php`; build 39) und die Regeln 5 bis 7 (`STV_RunSelfTest`, Knopf und
+  unsichtbarer Hinweis im Formular, `tests/check-self-test.php`; build 40). Offen: „Standby" als Schaltwert
+  sendet dasselbe wie „Aus"; Variablennamen der Altinstanz englisch, neuer Instanzen deutsch.
 - **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die
   Antwort auf `setActiveApp`.
 - Der Kopfhörer-Eintrag von `getVolumeInformation` schreibt ebenfalls `AudioMute` und kann den Wert des

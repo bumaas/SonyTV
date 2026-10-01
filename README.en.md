@@ -135,7 +135,10 @@ The names of inputs, apps and keys differ from device to device; valid are the o
 ```php
 STV_UpdateAll(int $InstanceID): bool;              // update all status variables now; false if the state could not be determined
 STV_ReadApplicationList(int $InstanceID): string;  // installed apps as a JSON list (title, uri, icon)
+STV_RunSelfTest(int $InstanceID): string;          // self test as text, switches nothing
 ```
+
+`STV_RunSelfTest` checks configuration, reachability, Pre-Shared Key and the three lists and returns one line per check (✓ fine, ⚠ warning, ✗ error, below it after → what to do) and finally `N errors, M warnings`. The button *Run self test* in the form shows the same.
 
 **Reading the lists again** – for example after installing a new app; the buttons in the form do the same:
 

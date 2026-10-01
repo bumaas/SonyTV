@@ -69,6 +69,7 @@ trait SonyConstants
 
     private const int SYSTEM_ERROR_ILLEGAL_STATE = 7;
     private const int SYSTEM_ERROR_FORBIDDEN     = 403;
+    private const int SYSTEM_ERROR_DISPLAY_OFF   = 40005;
     private const int HTTP_ERROR_NOT_FOUND       = 404;
 
     private const int NO_SELECTION = -1;
@@ -348,6 +349,104 @@ class SonyTV extends IPSModuleStrict
         }
 
         return true;
+    }
+
+    /**
+     * Probelauf ohne Wirkung: prüft Konfiguration, Erreichbarkeit, Pre-Shared Key und Listen und liefert das
+     * Ergebnis als Text, eine Zeile je Prüfung (✓ in Ordnung, ⚠ Warnung, ✗ Fehler) und am Ende die Zahl der
+     * Fehler und Warnungen. Schaltet nichts und schreibt keine Variable.
+     *
+     * @throws \JsonException
+     */
+    public function RunSelfTest(): string
+    {
+        $lines    = [];
+        $errors   = 0;
+        $warnings = 0;
+        $add      = static function (string $level, string $label, string $hint = '') use (&$lines, &$errors, &$warnings): void {
+            $lines[] = match ($level) {
+                'ok'    => '✓',
+                'warn'  => '⚠',
+                'error' => '✗',
+                default => '•',
+            } . ' ' . $label;
+            if ($hint !== '') {
+                $lines[] = '   → ' . $hint;
+            }
+            $errors += $level === 'error' ? 1 : 0;
+            $warnings += $level === 'warn' ? 1 : 0;
+        };
+        $summary = static function () use (&$lines, &$errors, &$warnings): string {
+            $lines[] = sprintf('%d errors, %d warnings', $errors, $warnings);
+            return implode("\n", $lines);
+        };
+
+        $configurationError = $this->getConfigurationError();
+        if ($configurationError !== 0) {
+            $add('error', 'Configuration: ' . $this->getConfigurationErrorText($configurationError), 'Correct the setting and apply the changes.');
+            return $summary();
+        }
+        $interval = $this->ReadPropertyInteger(self::PROP_UPDATE_INTERVAL);
+        $add('ok', 'Configuration: host ' . $this->ReadPropertyString(self::PROP_HOST) . ', update interval '
+                   . ($interval === 0 ? 'off (no automatic update)' : $interval . ' s'));
+
+        $host    = $this->ReadPropertyString(self::PROP_HOST);
+        $reached = false;
+        for ($i = 1; $i <= self::PING_ATTEMPTS && !$reached; $i++) {
+            $reached = $this->ping($host, self::PING_TIMEOUT_MS);
+        }
+        if (!$reached) {
+            $add(
+                'error',
+                sprintf('TV %s does not answer ping (%d attempts)', $host, self::PING_ATTEMPTS),
+                "Is it disconnected from mains, is 'Remote start' switched off on the TV, or is the IP address wrong?"
+            );
+            return $summary();
+        }
+
+        $status = $this->getResult($this->callRestApi('system', 'getPowerStatus', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]))[0]['status'] ?? null;
+        if (!is_string($status)) {
+            $add('error', sprintf('TV %s answers ping, but not getPowerStatus', $host), 'Is the device at this address a Sony Bravia TV with IP control switched on?');
+            return $summary();
+        }
+        $add('ok', sprintf('TV %s answers, power status: %s', $host, match ($status) {
+            'standby' => 'Standby',
+            'active'  => 'On',
+            default   => $status,
+        }));
+
+        // getPlayingContentInfo verlangt den Schlüssel; mit richtigem Schlüssel kommt ein Ergebnis, 40005 (Standby)
+        // oder 7 (App im Vordergrund), mit falschem 403 (alles mitgeschnitten)
+        $response = $this->callRestApi('avContent', 'getPlayingContentInfo', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [
+            self::SYSTEM_ERROR_ILLEGAL_STATE, self::SYSTEM_ERROR_FORBIDDEN, self::SYSTEM_ERROR_DISPLAY_OFF
+        ]);
+        $answer = $response === false ? null : json_decode($response, true);
+        if (!is_array($answer)) {
+            $add('warn', 'Pre-Shared Key could not be checked: no answer to getPlayingContentInfo');
+        } elseif (($answer['error'][0] ?? null) === self::SYSTEM_ERROR_FORBIDDEN) {
+            $add(
+                'error',
+                'Pre-Shared Key rejected by the TV (error 403)',
+                "Enter the same key as on the TV under Network & Internet → Local network → IP control (authentication 'Pre-Shared Key')."
+            );
+        } else {
+            $add('ok', 'Pre-Shared Key accepted');
+        }
+
+        foreach ([
+            [self::VAR_IDENT_SEND_REMOTE_KEY, 'remote keys', 'UpdateRemoteKeyList'],
+            [self::VAR_IDENT_INPUT_SOURCE, 'input sources', 'GetSourceListInfo'],
+            [self::VAR_IDENT_APPLICATION, 'applications', 'UpdateApplicationList'],
+        ] as [$ident, $name, $action]) {
+            $count = count($this->getListEntries($ident));
+            $add(
+                $count === 0 ? 'warn' : 'ok',
+                sprintf('%d %s read (options of the variable %s)', $count, $name, $ident),
+                $count === 0 ? sprintf("Read the list with IPS_RequestAction(\$InstanceID, '%s', 0) while the TV is on or in standby.", $action) : ''
+            );
+        }
+
+        return $summary();
     }
 
     /**
