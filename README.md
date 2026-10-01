@@ -79,7 +79,7 @@ Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualis
 
 | Name | Ident | Darstellung | Bedeutung |
 | :--- | :---- | :---------- | :-------- |
-| Status | `PowerStatus` | Aufzählung | Ausgeschaltet, Standby oder Eingeschaltet. Auswahl *Eingeschaltet* schaltet ein, alles andere aus. |
+| Status | `PowerStatus` | Aufzählung | Ausgeschaltet, Standby oder Eingeschaltet. Auswahl *Eingeschaltet* schaltet ein; *Ausgeschaltet* und *Standby* schalten beide in den Standby – ganz ausschalten lässt sich der Fernseher über das Netzwerk nicht. *Ausgeschaltet* erscheint nur, wenn der Fernseher nicht antwortet. |
 | Mute | `AudioMute` | Schalter | Stummschaltung |
 | Lautstärke Lautsprecher | `SpeakerVolume` | Schieberegler 0–100 % | Lautstärke der Lautsprecher |
 | Lautstärke Kopfhörer | `HeadphoneVolume` | Schieberegler 0–100 % | Lautstärke des Kopfhörerausgangs |
@@ -117,7 +117,7 @@ Die Statusvariablen sind schreibgeschützt: `SetValue` aus einem Skript ändert 
 **Schalten**
 
 ```php
-STV_SetPowerStatus(int $InstanzID, bool $Status): bool;    // true = ein, false = aus
+STV_SetPowerStatus(int $InstanzID, bool $Status): bool;    // true = ein, false = Standby
 STV_SetAudioMute(int $InstanzID, bool $Status): bool;      // true = stumm
 STV_SetSpeakerVolume(int $InstanzID, int $Volume): bool;   // 0..100, andere Werte: Warnung
 STV_SetHeadphoneVolume(int $InstanzID, int $Volume): bool; // 0..100, andere Werte: Warnung

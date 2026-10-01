@@ -79,7 +79,7 @@ With any of the three configuration errors (IP address, interval) no update runs
 
 | Name | Ident | Presentation | Meaning |
 | :--- | :---- | :----------- | :------ |
-| Status | `PowerStatus` | Enumeration | Off, Standby or On. Selecting *On* switches the TV on, anything else switches it off. |
+| Status | `PowerStatus` | Enumeration | Off, Standby or On. Selecting *On* switches the TV on; *Off* and *Standby* both put it into standby – the TV cannot be switched fully off over the network. *Off* only appears when the TV does not answer. |
 | Mute | `AudioMute` | Switch | mute |
 | Speaker Volume | `SpeakerVolume` | Slider 0–100 % | volume of the speakers |
 | Headphone Volume | `HeadphoneVolume` | Slider 0–100 % | volume of the headphone output |
@@ -117,7 +117,7 @@ The status variables are read-only: `SetValue` from a script does not change the
 **Switching**
 
 ```php
-STV_SetPowerStatus(int $InstanceID, bool $Status): bool;    // true = on, false = off
+STV_SetPowerStatus(int $InstanceID, bool $Status): bool;    // true = on, false = standby
 STV_SetAudioMute(int $InstanceID, bool $Status): bool;      // true = muted
 STV_SetSpeakerVolume(int $InstanceID, int $Volume): bool;   // 0..100, other values: warning
 STV_SetHeadphoneVolume(int $InstanceID, int $Volume): bool; // 0..100, other values: warning

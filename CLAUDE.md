@@ -138,8 +138,10 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
   build 36) sowie Regel 3 (Status 201 und 203, `tests/check-status-reachability.php`; build 37) und die Rohmeldung
   zur 404-Antwort (`tests/check-power-status-404.php`; build 38), das Flattern im Standby (Regel 11, drei Pings
   auch im Standby, `tests/check-connection.php`; build 39) und die Regeln 5 bis 7 (`STV_RunSelfTest`, Knopf und
-  unsichtbarer Hinweis im Formular, `tests/check-self-test.php`; build 40). Offen: „Standby" als Schaltwert
-  sendet dasselbe wie „Aus"; Variablennamen der Altinstanz englisch, neuer Instanzen deutsch.
+  unsichtbarer Hinweis im Formular, `tests/check-self-test.php`; build 40). „Aus" (0) und „Standby" (1) schalten
+  beide in den Standby, ganz aus geht über das Netz nicht; Entscheidung Burkhard: beide erlaubt lassen, Formular
+  (unsichtbar), Selbsttest und README sagen es (build 41). Die englischen Variablennamen der Altinstanz #36393
+  sind am 01.10.2026 von Hand auf die deutschen gesetzt; das Modul benennt nichts um. Offen: Blindtest wiederholen.
 - **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die
   Antwort auf `setActiveApp`.
 - Der Kopfhörer-Eintrag von `getVolumeInformation` schreibt ebenfalls `AudioMute` und kann den Wert des

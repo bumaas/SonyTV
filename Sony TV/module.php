@@ -414,6 +414,7 @@ class SonyTV extends IPSModuleStrict
             'active'  => 'On',
             default   => $status,
         }));
+        $add('info', 'Switching PowerStatus: 2 = On; 0 (Off) and 1 (Standby) both put the TV into standby, it cannot be switched fully off over the network');
 
         // getPlayingContentInfo verlangt den Schlüssel; mit richtigem Schlüssel kommt ein Ergebnis, 40005 (Standby)
         // oder 7 (App im Vordergrund), mit falschem 403 (alles mitgeschnitten)

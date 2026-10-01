@@ -94,4 +94,12 @@ $hinweise = array_filter($actions, static fn (array $e): bool => $e['type'] === 
 $hinweis  = implode("\n", array_column($hinweise, 'caption'));
 pruefe(str_contains($hinweis, 'STV_RunSelfTest($InstanceID)') && str_contains($hinweis, 'UpdateRemoteKeyList'), 'Formular: unsichtbarer Hinweis nennt STV_RunSelfTest und die Listen-Aufrufe');
 
+// MCP-Test 01.10.2026, Befund 8: „Ausgeschaltet" (0) und „Standby" (1) schalten beide in den Standby – ganz aus geht
+// über das Netz nicht. Entscheidung Burkhard: beide Werte bleiben erlaubt, Formular und Selbsttest sagen es.
+pruefe(str_contains($hinweis, 'cannot be switched fully off'), 'Formular: unsichtbarer Hinweis sagt, dass 0 und 1 beide in den Standby schalten');
+$m    = konfigurierteInstanz('standby');
+$text = selbsttest($m);
+pruefe(str_contains($text, '• Switching PowerStatus') && str_contains($text, 'cannot be switched fully off'), 'Selbsttest: Hinweis zum Schalten von PowerStatus');
+pruefe(str_ends_with(rtrim($text), '0 errors, 0 warnings'), 'Selbsttest: der Hinweis zählt weder als Fehler noch als Warnung');
+
 ergebnis();
