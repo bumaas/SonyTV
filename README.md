@@ -53,7 +53,7 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 
 | Feld | Bedeutung |
 | :--- | :-------- |
-| `WriteLogInformationToIPSLogger` | Informationen gehen in das Logfile der IPSLibrary statt in das Symcon-Log, Fehlermeldungen in beide |
+| `WriteLogInformationToIPSLogger` | Informationen und Fehlermeldungen gehen zusätzlich in das Logfile der IPSLibrary (bis 2.2 build 41 gingen Informationen dann nur dorthin) |
 | `WriteDebugInformationToLogfile` | Debug-Informationen werden zusätzlich in das Symcon-Log geschrieben |
 | `WriteDebugInformationToIPSLogger` | Debug-Informationen werden zusätzlich in das Logfile der IPSLibrary geschrieben |
 

@@ -56,6 +56,12 @@ Symcon-Modulbibliothek zur Steuerung von Sony-Bravia-Fernsehern über deren REST
   Fehlerantwort zählt wie keine Antwort: `executeRestApiRequestWithRetry()` wiederholt nach 3 s (am 01.10.2026
   kam `{"error":[404,"Not Found"]}`, Fixture `fehler-404`).
 
+## Protokoll
+
+`Logger_Err` und `Logger_Inf` schreiben immer ins Debug und ins Symcon-Log, mit `WriteLogInformationToIPSLogger`
+zusätzlich in die IPSLibrary (bis build 41 gingen Infos dann nur dorthin und waren über MCP nicht zu sehen, an
+#36393 ist der Schalter an). `tests/check-logging.php` hält das fest.
+
 ## Selbsttest
 
 `STV_RunSelfTest()` (Knopf im Formular, für Skripte und KI im unsichtbaren Label daneben beschrieben) prüft

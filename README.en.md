@@ -53,7 +53,7 @@ Under *Expert Parameters* there are three switches for logging:
 
 | Field | Meaning |
 | :---- | :------ |
-| `WriteLogInformationToIPSLogger` | information goes to the IPSLibrary log file instead of the Symcon log, error messages go to both |
+| `WriteLogInformationToIPSLogger` | information and error messages are additionally written to the IPSLibrary log file (up to 2.2 build 41, information then went there only) |
 | `WriteDebugInformationToLogfile` | debug information is additionally written to the Symcon log |
 | `WriteDebugInformationToIPSLogger` | debug information is additionally written to the IPSLibrary log file |
 

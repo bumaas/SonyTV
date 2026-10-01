@@ -9,7 +9,7 @@
             "Expert Parameters": "Experten Einstellungen",
             "Update Interval": "Aktualisierungsintervall",
             "Seconds": "Sekunden",
-            "Log and Error Information are written to the logfile of IPSLibrary instead of standard logfile": "Informationen und Fehlermeldungen werden in das Logfile der IPSLibrary anstatt in das Standardlogfile geschrieben",
+            "Log and error information are additionally written to the logfile of IPSLibrary": "Informationen und Fehlermeldungen werden zusätzlich in das Logfile der IPSLibrary geschrieben",
             "Debug information are written additionally to standard logfile": "Debug Informationen werden zusätzlich in das Standardlogfile geschrieben",
             "Debug information are written additionally to the logfile of IPSLibrary": "Debug Informationen werden zusätzlich in das Logfile der IPSLibrary geschrieben",
             "With 'Update status variables', the variables can be updated once regardless of the set interval.": "Mit 'Statusvariablen aktualisieren' können unabhängig vom eingestellten Intervall die Variablen einmalig aktualisiert werden.",
