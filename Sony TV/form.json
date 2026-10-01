@@ -47,9 +47,19 @@
   ],
   "status":   [
     {
+      "code":    201,
+      "icon":    "error",
+      "caption": "TV does not answer: disconnected from mains, 'Remote start' switched off or wrong IP address?"
+    },
+    {
       "code":    202,
       "icon":    "error",
       "caption": "IP address can not be empty."
+    },
+    {
+      "code":    203,
+      "icon":    "error",
+      "caption": "The TV rejected the Pre-Shared Key (error 403). Enter the same key as on the TV."
     },
     {
       "code":    204,

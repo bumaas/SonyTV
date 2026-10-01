@@ -29,7 +29,9 @@ if (function_exists('IPSUtils_Include')) {
 
 trait SonyConstants
 {
+    private const int STATUS_INST_NOT_REACHABLE = 201;
     private const int STATUS_INST_IP_IS_EMPTY   = 202;
+    private const int STATUS_INST_PSK_REJECTED  = 203;
     private const int STATUS_INST_IP_IS_INVALID = 204; //IP-Adresse ist ungültig
     private const int STATUS_INST_INTERVAL_IS_INVALID = 205;
 
@@ -58,6 +60,7 @@ trait SonyConstants
 
     private const string BUFFER_TIMESTAMP_LASTPOWERSTATUSFAIL = 'tsLastFailedGetBufferPowerState';
     private const string BUFFER_FAILED_POLLS                  = 'failedPowerStatusPolls';
+    private const string BUFFER_PSK_REJECTED                  = 'pskRejected';
     private const int    LENGTH_OF_BOOTTIME                   = 90;
 
     // Verbindungsprüfung: wiederholt wird nur, wenn der TV zuletzt eingeschaltet war
@@ -829,7 +832,7 @@ class SonyTV extends IPSModuleStrict
 
         // Statusvariable und Instanzstatus folgen dem ermittelten Zustand
         $this->SetValue(self::VAR_IDENT_POWER_STATUS, $powerStatus);
-        $this->SetStatus($powerStatus === self::STATUS_OFF ? IS_INACTIVE : IS_ACTIVE);
+        $this->refreshInstanceStatus();
 
         if ($loadMissingLists && $previousStatus === self::STATUS_OFF && $powerStatus > self::STATUS_OFF) {
             $this->loadMissingLists();
@@ -1028,6 +1031,9 @@ class SonyTV extends IPSModuleStrict
 
         $this->Logger_Dbg(__FUNCTION__, sprintf('received (HTTP %s): %s', $httpCode, $response));
 
+        // vor dem Filter der ignorierten Fehler: auch eine ignorierte 403 heißt „Schlüssel abgelehnt"
+        $this->noteAuthentication($httpCode, $response, $data);
+
         if ($ignoreResponse) {
             // der Inhalt der Antwort sagt nichts aus, der HTTP-Status schon
             if ($httpCode >= 400) {
@@ -1063,6 +1069,72 @@ class SonyTV extends IPSModuleStrict
         }
 
         return $response;
+    }
+
+    /**
+     * Merkt sich, ob der TV den Pre-Shared Key zuletzt abgelehnt (HTTP 403 bzw. Fehler 403) oder angenommen hat.
+     * getPowerStatus antwortet auch mit falschem Schlüssel und sagt darüber nichts (Mitschnitt falscher-psk).
+     */
+    private function noteAuthentication(int $httpCode, string $response, string $data): void
+    {
+        $answer   = json_decode($response, true);
+        $rejected = $httpCode === self::SYSTEM_ERROR_FORBIDDEN
+                    || (is_array($answer) && is_array($answer['error'] ?? null) && ($answer['error'][0] ?? null) === self::SYSTEM_ERROR_FORBIDDEN);
+
+        if (!$rejected) {
+            $request = json_decode($data, true);
+            if ($httpCode >= 400 || (is_array($request) && ($request['method'] ?? '') === 'getPowerStatus')) {
+                return;
+            }
+        }
+
+        if (($this->GetBuffer(self::BUFFER_PSK_REJECTED) === '1') === $rejected) {
+            return;
+        }
+
+        $this->SetBuffer(self::BUFFER_PSK_REJECTED, $rejected ? '1' : '');
+        $this->refreshInstanceStatus();
+    }
+
+    /**
+     * Setzt den Instanzstatus aus Erreichbarkeit und Schlüssel und meldet jeden Wechsel einmal im Log.
+     * Eine KI über MCP sieht vom Status nur die Zahl; der Text dazu steht nur in der form.json.
+     */
+    private function refreshInstanceStatus(): void
+    {
+        if ($this->getConfigurationError() !== 0) {
+            return;
+        }
+
+        $host      = $this->ReadPropertyString(self::PROP_HOST);
+        $newStatus = match (true) {
+            $this->GetValue(self::VAR_IDENT_POWER_STATUS) === self::STATUS_OFF => self::STATUS_INST_NOT_REACHABLE,
+            $this->GetBuffer(self::BUFFER_PSK_REJECTED) === '1'               => self::STATUS_INST_PSK_REJECTED,
+            default                                                            => IS_ACTIVE,
+        };
+
+        $oldStatus = $this->GetStatus();
+        if ($newStatus === $oldStatus) {
+            return;
+        }
+        $this->SetStatus($newStatus);
+
+        if ($oldStatus === self::STATUS_INST_NOT_REACHABLE) {
+            $this->Logger_Inf(sprintf('TV %s answers again.', $host));
+        }
+        if ($oldStatus === self::STATUS_INST_PSK_REJECTED && $newStatus === IS_ACTIVE) {
+            $this->Logger_Inf(sprintf('Pre-Shared Key accepted by the TV %s.', $host));
+        }
+
+        if ($newStatus === self::STATUS_INST_NOT_REACHABLE) {
+            $this->Logger_Err(sprintf(
+                "TV %s does not answer (no reply to ping or to getPowerStatus). Is it disconnected from mains, is 'Remote start' switched off, or is the IP address wrong?",
+                $host
+            ));
+        }
+        if ($newStatus === self::STATUS_INST_PSK_REJECTED) {
+            $this->Logger_Err(sprintf('The TV %s rejected the Pre-Shared Key (error 403). Enter the same key as on the TV under IP control.', $host));
+        }
     }
 
     /**

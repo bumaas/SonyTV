@@ -38,7 +38,7 @@ pruefe(array_column($m->anfragen, 'method') === ['getPowerStatus'], 'UpdateAll i
 SonyTVHarness::$ping = false;
 $m->marke();
 pruefe($m->UpdateAll() === true, 'TV aus: UpdateAll liefert true, der Zustand ist ermittelt');
-pruefe($m->werte()['PowerStatus'] === 0 && $m->instanzStatus() === IS_INACTIVE, 'TV aus: PowerStatus = 0, Instanz inaktiv');
+pruefe($m->werte()['PowerStatus'] === 0 && $m->instanzStatus() === 201, 'TV aus: PowerStatus = 0, Status 201 (TV antwortet nicht)');
 SonyTVHarness::$ping = true;
 
 // Eine Liste lässt sich nicht lesen (Mitschnitt falscher-psk): die anderen werden trotzdem gelesen

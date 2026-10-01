@@ -64,12 +64,16 @@ Under *Expert Parameters* there are three switches for logging:
 | State | Meaning | What to do |
 | :---- | :------ | :--------- |
 | active | the TV answers (on or in standby) | – |
-| inactive | the TV does not answer | is it switched off or disconnected? Is the IP address correct? |
+| inactive | state not known yet, e.g. when applying while the TV is starting | – |
+| TV does not answer | no ping, or `getPowerStatus` fails twice in a row; the variable *Status* shows *Off* | is it disconnected from mains? Is *Remote start* switched on? Is the IP address correct? |
+| The TV rejected the Pre-Shared Key | the TV answers with error 403 | enter the same key as on the TV |
 | IP address can not be empty | `Host` is missing | enter the IP address |
 | IP address is not valid | `Host` is not an IP address | enter an IP address instead of a host name |
 | Update interval must not be negative | `UpdateInterval` is less than 0 | enter 0 (no update) or a number of seconds |
 
-With any of these three errors no update runs and switching commands are rejected. The Symcon log additionally shows the error with the value entered, e.g. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
+Both errors are written once to the Symcon log when they occur, and so is their recovery (`TV … answers again.`, `Pre-Shared Key accepted …`). The state "Pre-Shared Key rejected" stays until a command that needs the key succeeds – the TV answers the query for its power state even without a valid key and tells nothing about it.
+
+With any of the three configuration errors (IP address, interval) no update runs and switching commands are rejected. The Symcon log additionally shows the error with the value entered, e.g. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 
 ## 3. Status variables
 
@@ -164,7 +168,7 @@ $Answer = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri":
 - **The module only knows apps it has started itself.** The TV does not tell which app is running. *Start Application* therefore shows the app last started via Symcon and changes to "-" as soon as an input or a channel is playing again. An app started with the remote control does not appear; *Input Source* then shows "-".
 - **Switching on takes a while.** While the TV is booting it already reports itself as on although it cannot be operated yet. The module therefore waits up to 90 seconds before setting *On*.
 - **Dropouts are absorbed.** If a TV that is on stops answering, the module checks the connection three times with one second each before reporting *Off*. A single dropout of the interface does not change the status, only the second one in a row does.
-- **A wrong pre-shared key does not show in the status.** The TV reports its state even without a valid key. The selection lists stay empty, however, and switching fails; Symcon's log then contains `TV replied with error '403, Forbidden'`.
+- **A wrong pre-shared key only shows with the first command that needs the key.** The TV reports its power state even without a valid key. In standby the module only queries that state; the error then shows when the lists are read or with the first switching command.
 
 ## 7. Terms
 

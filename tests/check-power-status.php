@@ -40,7 +40,7 @@ $m->antworten['system/getPowerStatus'] = CURLE_OPERATION_TIMEDOUT;
 $m->UpdateAll();
 $m->marke();
 pruefe($m->UpdateAll() === true, 'zweiter Aussetzer in Folge: Zustand ist ermittelt');
-pruefe($m->werte()['PowerStatus'] === 0 && $m->instanzStatus() === IS_INACTIVE, 'zweiter Aussetzer in Folge: PowerStatus Aus, Instanz inaktiv');
+pruefe($m->werte()['PowerStatus'] === 0 && $m->instanzStatus() === 201, 'zweiter Aussetzer in Folge: PowerStatus Aus, Status 201');
 
 // --- Bootphase nach „ganz aus" ---
 $m                   = konfigurierteInstanz('aktiv');
@@ -74,7 +74,7 @@ $meldung = meldungVon(fn () => $m->RequestAction('PowerStatus', 0));
 pruefe(array_column($m->anfragen, 'method') === ['setPowerStatus', 'getPowerStatus'], 'nach dem Fehlschlag wird der Zustand neu gelesen');
 pruefe(str_starts_with((string)$meldung, 'Action "PowerStatus" with value 0 failed'), 'TV lehnt ab und bleibt an: RequestAction meldet den Fehlschlag');
 pruefe(!in_array(['PowerStatus', 0], $m->writes, true), 'kein falsches „Aus" in der Variablen');
-pruefe($m->werte()['PowerStatus'] === 2 && $m->instanzStatus() === IS_ACTIVE, 'TV bleibt An, Instanz aktiv');
+pruefe($m->werte()['PowerStatus'] === 2 && $m->instanzStatus() === 203, 'TV bleibt An, Status 203: die Ablehnung kam mit 403 (Schlüssel)');
 pruefe($m->pausen === [], 'nach einem Fehlschlag keine Wartezeit');
 
 // Schalten gelingt: 2 s warten, dann neu lesen

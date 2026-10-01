@@ -21,6 +21,8 @@
             "Create file with API information": "Datei mit API Informationen erstellen",
             "Application List not yet set. Please update the application list.": "Die Applikationsliste wurde noch nicht ermittelt. Bitte die Applikationsliste aktualisieren.",
             "IP address can not be empty.": "IP Adresse darf nicht leer sein.",
+            "TV does not answer: disconnected from mains, 'Remote start' switched off or wrong IP address?": "Fernseher antwortet nicht: vom Netz getrennt, 'Remote start' ausgeschaltet oder falsche IP-Adresse?",
+            "The TV rejected the Pre-Shared Key (error 403). Enter the same key as on the TV.": "Der Fernseher hat den Pre-Shared Key abgelehnt (Fehler 403). Denselben Schlüssel wie am Fernseher eintragen.",
             "IP address is not valid.": "IP Adresse ist nicht gültig.",
             "Update interval must not be negative.": "Das Aktualisierungsintervall darf nicht negativ sein.",
             "Error writing the file.": "Fehler beim Erstellen der Datei.",

@@ -68,6 +68,17 @@ Vor `KR_READY` fragt `ApplyChanges` den TV nicht ab und räumt keine Profile auf
 (202 Host leer, 204 keine IP-Adresse, 205 Intervall negativ) läuft kein Timer, und der Fehler steht mit Wert
 im Log (`getConfigurationErrorText()`), weil eine KI über MCP nur den Statuscode sieht.
 
+## Instanzstatus im Betrieb
+
+`refreshInstanceStatus()` setzt den Status aus der Variable `PowerStatus` und dem Buffer `pskRejected` und
+schreibt jeden Wechsel einmal ins Log (Fehler als `Logger_Err`, Behebung als `Logger_Inf`):
+**201** TV antwortet nicht (`PowerStatus` = Aus; geht vor), **203** Pre-Shared Key abgelehnt, sonst 102.
+104 bleibt nur für „Zustand unbekannt" in `ApplyChanges`. `noteAuthentication()` in `SendCurlPost()` wertet
+jede Antwort **vor** dem Filter der ignorierten Fehler aus (`getPlayingContentInfo` ignoriert 403): HTTP 403
+oder Fehler 403 setzt `pskRejected`, jede andere Antwort ohne HTTP-Fehler löscht ihn — außer auf
+`getPowerStatus`, das auch mit falschem Schlüssel antwortet. Annahme dahinter: Alle anderen Methoden
+verlangen den Schlüssel (belegt nur für `setPowerStatus`, `getPlayingContentInfo` und IRCC).
+
 ## Prüfen und Ausrollen
 
 ```bash
@@ -115,14 +126,16 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
 
 - **MCP-Test vom 01.10.2026** (Regeln in `~\.claude\skills\symcon-modul-repo\mcp-tauglichkeit.md`): erledigt
   sind Regel 8, die Wertebereiche und Regel 1 (PSK-Hinweis in Formular und Konfigurator, `tests/check-form-help.php`;
-  build 36). Offen: kein Status für „nicht erreichbar" (Regel 3, bisher stummes 104), Rohmeldung
-  `Unexpected return: {"error":[404,…]}` aus `fetchPowerStatus()`, Flattern im Standby nach einem verpassten Ping (Regel 11), keine Erklärfunktion und
-  Knopf-Ergebnisse nur als Popup (Regeln 5, 7), „Standby" als Schaltwert sendet dasselbe wie „Aus".
+  build 36) sowie Regel 3 (Status 201 und 203, `tests/check-status-reachability.php`; build 37). Offen: Rohmeldung
+  `Unexpected return: {"error":[404,…]}` aus `fetchPowerStatus()`, Flattern im Standby nach einem verpassten
+  Ping (Regel 11, mit Status 201 jetzt auffälliger), keine Erklärfunktion und Knopf-Ergebnisse nur als Popup
+  (Regeln 5, 7), „Standby" als Schaltwert sendet dasselbe wie „Aus".
 - **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die
   Antwort auf `setActiveApp`.
 - Der Kopfhörer-Eintrag von `getVolumeInformation` schreibt ebenfalls `AudioMute` und kann den Wert des
   Lautsprechers überschreiben. Ohne Mitschnitt mit angeschlossenem Kopfhörer nicht prüfbar, deshalb unverändert.
-- Ein falscher PSK hat keinen eigenen Instanzstatus; er zeigt sich nur an leeren Listen und im Log.
+- Ob `getRemoteControllerInfo`, `getApplicationList` und die übrigen Abfragen im Standby den Schlüssel
+  verlangen, ist nicht mitgeschnitten. Falls nicht, löschen sie einen gesetzten Status 203 zu früh.
 - Das Modul sendet Tasten an `/sony/IRCC`, was der KD-75XE9405 annimmt. Seine Gerätebeschreibung (`dd.xml`)
   nennt als `controlURL` aber `/sony/ircc` (klein), und manche Modelle sollen nur das annehmen. Ob die
   Kleinschreibung überall geht, ist ungeprüft.

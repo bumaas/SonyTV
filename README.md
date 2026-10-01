@@ -64,12 +64,16 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 | Status | Bedeutung | Was tun? |
 | :----- | :-------- | :------- |
 | aktiv | Fernseher antwortet (eingeschaltet oder Standby) | – |
-| inaktiv | Fernseher antwortet nicht | ist er ausgeschaltet oder vom Netz getrennt? Stimmt die IP-Adresse? |
+| inaktiv | Zustand noch unbekannt, etwa beim Übernehmen während der Fernseher startet | – |
+| Fernseher antwortet nicht | kein Ping, oder `getPowerStatus` bleibt zweimal in Folge aus; die Variable *Status* steht auf *Ausgeschaltet* | ist er vom Netz getrennt? Ist *Remote start* eingeschaltet? Stimmt die IP-Adresse? |
+| Der Fernseher hat den Pre-Shared Key abgelehnt | der Fernseher antwortet mit Fehler 403 | denselben Schlüssel wie am Fernseher eintragen |
 | IP-Adresse darf nicht leer sein | `Host` fehlt | IP-Adresse eintragen |
 | IP-Adresse ist nicht gültig | `Host` ist keine IP-Adresse | IP-Adresse statt Hostnamen eintragen |
 | Das Aktualisierungsintervall darf nicht negativ sein | `UpdateInterval` ist kleiner als 0 | 0 (keine Aktualisierung) oder eine Zahl von Sekunden eintragen |
 
-Bei den drei Fehlermeldungen läuft keine Aktualisierung, und Schaltbefehle werden abgewiesen. Im Log von Symcon steht der Fehler zusätzlich mit dem eingetragenen Wert, z. B. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
+Beide Fehler stehen beim Wechsel einmal im Log von Symcon, ebenso ihre Behebung (`TV … answers again.`, `Pre-Shared Key accepted …`). Der Status „Pre-Shared Key abgelehnt" bleibt stehen, bis ein Befehl mit Schlüssel gelingt – die Abfrage des Ein/Aus-Zustands beantwortet der Fernseher auch ohne gültigen Schlüssel und sagt darüber nichts.
+
+Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualisierung, und Schaltbefehle werden abgewiesen. Im Log von Symcon steht der Fehler zusätzlich mit dem eingetragenen Wert, z. B. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 
 ## 3. Statusvariablen
 
@@ -164,7 +168,7 @@ $Antwort = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri"
 - **Apps kennt das Modul nur, wenn es sie selbst gestartet hat.** Der Fernseher verrät nicht, welche App gerade läuft. *Starte Applikation* zeigt deshalb die zuletzt über Symcon gestartete App und geht auf „-“, sobald wieder ein Eingang oder ein Sender läuft. Eine mit der Fernbedienung gestartete App erscheint nicht; *Eingangsquelle* steht dann auf „-“.
 - **Nach dem Einschalten dauert es.** Während der Fernseher startet, meldet er sich bereits als eingeschaltet, obwohl er noch nicht bedienbar ist. Das Modul wartet deshalb bis zu 90 Sekunden, bevor es *Eingeschaltet* setzt.
 - **Aussetzer werden abgefangen.** Antwortet ein eingeschalteter Fernseher nicht mehr, prüft das Modul die Verbindung dreimal mit je einer Sekunde, bevor es *Ausgeschaltet* meldet. Ein einzelner Aussetzer der Schnittstelle ändert den Status nicht, erst der zweite in Folge.
-- **Ein falscher Pre-Shared Key fällt nicht am Status auf.** Seinen Zustand meldet der Fernseher auch ohne gültigen Schlüssel. Die Auswahllisten bleiben aber leer, und Schalten scheitert; im Log von Symcon steht dann `TV replied with error '403, Forbidden'`.
+- **Ein falscher Pre-Shared Key fällt erst beim ersten Befehl mit Schlüssel auf.** Seinen Ein/Aus-Zustand meldet der Fernseher auch ohne gültigen Schlüssel. Im Standby fragt das Modul nur diesen ab; dann zeigt sich der Fehler erst beim Einlesen der Listen oder beim ersten Schaltbefehl.
 
 ## 7. Begriffe
 

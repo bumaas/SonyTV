@@ -31,7 +31,7 @@ $m->marke();
 pruefe($m->UpdateAll() === true, 'TV antwortet nicht auf Ping: Zustand ist ermittelt (Aus)');
 pruefe($m->pings === [['192.168.178.21', 1000], ['192.168.178.21', 1000], ['192.168.178.21', 1000]], 'TV war an: drei Pings mit 1 s Timeout');
 pruefe($m->anfragen === [], 'ohne Ping-Antwort keine Anfrage an den TV');
-pruefe($m->werte()['PowerStatus'] === 0 && $m->instanzStatus() === IS_INACTIVE, 'PowerStatus Aus, Instanz inaktiv');
+pruefe($m->werte()['PowerStatus'] === 0 && $m->instanzStatus() === 201, 'PowerStatus Aus, Status 201 (TV antwortet nicht)');
 
 // TV war schon aus: ein Versuch genügt
 $m->marke();
