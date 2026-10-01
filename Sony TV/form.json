@@ -1,7 +1,9 @@
 {
   "elements": [
-    {"type": "Label", "caption": "In this instance, all parameters for controlling a Sony TV are stored. The description of the individual parameters can be found in the documentation."},
+    {"type": "Label", "caption": "Controls a Sony Bravia TV over the network. The TV has to be prepared once, see the notes at the fields."},
+    {"type": "Label", "caption": "IP address of the TV, not a host name. A fixed address is recommended."},
     {"type": "ValidationTextBox", "name": "Host", "caption": "IP address of Sony TV"},
+    {"type": "Label", "caption": "Pre-Shared Key: a key of your choice that the TV expects with every command. On the TV under Network & Internet → Local network → IP control (menu names differ between TV generations), set the authentication to 'Pre-Shared Key' (or 'Normal and Pre-Shared Key') and enter the key. Enter the same key here (default 0000). Also switch on 'Remote start' there, otherwise the TV cannot be switched on from standby. With a wrong key the TV still reports its power state, but the lists stay empty and commands fail with error 403 (Forbidden) in the log."},
     {"type": "ValidationTextBox", "name": "PSK", "caption": "Pre-Shared Key"},
     {
       "type":  "ExpansionPanel", "caption": "Expert Parameters",
@@ -53,6 +55,11 @@
       "code":    204,
       "icon":    "error",
       "caption": "IP address is not valid."
+    },
+    {
+      "code":    205,
+      "icon":    "error",
+      "caption": "Update interval must not be negative."
     }
   ]
 }

@@ -276,6 +276,12 @@ class SonyDiscovery extends IPSModuleStrict
         $devices = json_decode($this->GetBuffer(self::BUFFER_DEVICES), false, 512, JSON_THROW_ON_ERROR);
 
         return [
+            // der Konfigurator legt nur den Host an, den Schlüssel muss der Anwender (oder eine KI über MCP) nachtragen
+            [
+                'type'    => 'Label',
+                'caption' => 'Instances created here only get the IP address. Afterwards enter the Pre-Shared Key in each Sony TV instance (the same key as on the TV under IP control, default 0000).'
+            ],
+
             // Inform user that the search for devices could take a while if no devices were found yet
             [
                 'name'          => 'searchingInfo',

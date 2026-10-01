@@ -30,6 +30,13 @@ Symcon-Modulbibliothek zur Steuerung von Sony-Bravia-Fernsehern über deren REST
   Symcon die Funktion beim Laden gar nicht an, bis build 24 so passiert) **und keine Vorgabewerte**: Die
   exportierte `STV_…`-Funktion verlangt jeden Parameter („Parameter count does not match", am nuc belegt).
   `tests/check-public-signatures.php` hält beides fest.
+- **`RequestAction` meldet jeden Fehlschlag per `trigger_error(…, E_USER_WARNING)`** (Regel 8 der
+  MCP-Tauglichkeit, seit 2.2 build 36): Die Methode ist `void`, ohne Warnung bekäme der Aufrufer `true`.
+  `getCommand()` prüft den Wert und liefert den Befehl. Ein ungültiger Wert ergibt `Invalid value "…" for "…"
+  (allowed: …)` mit den erlaubten Werten, eine leere Liste die Meldung aus `getListDefinition()` und ein
+  Befehl, der `false` liefert, `Action "…" with value … failed`. Die Lautstärke prüfen auch die `STV_`-Funktionen
+  (0 bis 100). Bei einem Konfigurationsfehler weist `SendCurlPost()` jede Anfrage mit Warnung ab.
+  `tests/check-request-action-errors.php` hält das fest.
 - Im Standby antwortet der TV auf `getPowerStatus`, `getRemoteControllerInfo`,
   `getCurrentExternalInputsStatus` und `getApplicationList`; Audio- und Content-Abfragen enden mit
   `40005 Display Is Turned off`.
@@ -58,7 +65,8 @@ Methode: `executeCurl()` (HTTP, liefert auch den HTTP-Status), `ping()` (`Sys_Pi
 
 Vor `KR_READY` fragt `ApplyChanges` den TV nicht ab und räumt keine Profile auf; `Create` registriert
 `IPS_KERNELMESSAGE`, `MessageSink` holt `ApplyChanges` mit `KR_READY` nach. Bei einem Konfigurationsfehler
-(202/204) läuft kein Timer.
+(202 Host leer, 204 keine IP-Adresse, 205 Intervall negativ) läuft kein Timer, und der Fehler steht mit Wert
+im Log (`getConfigurationErrorText()`), weil eine KI über MCP nur den Statuscode sieht.
 
 ## Prüfen und Ausrollen
 
@@ -105,6 +113,11 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
 
 ## Offene Punkte
 
+- **MCP-Test vom 01.10.2026** (Regeln in `~\.claude\skills\symcon-modul-repo\mcp-tauglichkeit.md`): erledigt
+  sind Regel 8, die Wertebereiche und Regel 1 (PSK-Hinweis in Formular und Konfigurator, `tests/check-form-help.php`;
+  build 36). Offen: kein Status für „nicht erreichbar" (Regel 3, bisher stummes 104), Rohmeldung
+  `Unexpected return: {"error":[404,…]}` aus `fetchPowerStatus()`, Flattern im Standby nach einem verpassten Ping (Regel 11), keine Erklärfunktion und
+  Knopf-Ergebnisse nur als Popup (Regeln 5, 7), „Standby" als Schaltwert sendet dasselbe wie „Aus".
 - **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die
   Antwort auf `setActiveApp`.
 - Der Kopfhörer-Eintrag von `getVolumeInformation` schreibt ebenfalls `AudioMute` und kann den Wert des

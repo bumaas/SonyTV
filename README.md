@@ -35,12 +35,12 @@ Steuert Sony-Bravia-Fernseher über das Netzwerk: ein- und ausschalten, Lautstä
 1. Unter *Network & Internet → Local network → IP control* die Authentifizierung *Pre-Shared Key* (oder *Normal and Pre-Shared Key*) wählen und einen Schlüssel festlegen, z. B. `0000`.
 2. *Remote start* einschalten. Ohne diese Einstellung lässt sich der Fernseher aus dem Standby nicht über das Netzwerk einschalten.
 
-Sonys eigene Beschreibung: [IP control](https://pro-bravia.sony.net/develop/integrate/ip-control/).
+Sonys eigene Beschreibung: [Remote Display Control](https://pro-bravia.sony.net/remote-display-control/).
 
 **In Symcon**
 
 1. Das Modul im Module Store unter *Sony TV* installieren.
-2. Instanz anlegen: entweder direkt eine Instanz *Sony TV* oder die Instanz *Sony Discovery*. Die Discovery sucht die Fernseher im Netzwerk und legt die passenden *Sony TV*-Instanzen per Klick an; sie braucht dafür die SSDP-Instanz von Symcon.
+2. Instanz anlegen: entweder direkt eine Instanz *Sony TV* oder die Instanz *Sony Discovery*. Die Discovery sucht die Fernseher im Netzwerk und legt die passenden *Sony TV*-Instanzen per Klick an; sie braucht dafür die SSDP-Instanz von Symcon. Sie trägt nur die IP-Adresse ein, den Pre-Shared Key danach in der Instanz *Sony TV* nachtragen.
 3. In der Instanz *Sony TV* eintragen:
 
 | Feld | Standard | Bedeutung |
@@ -67,6 +67,9 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 | inaktiv | Fernseher antwortet nicht | ist er ausgeschaltet oder vom Netz getrennt? Stimmt die IP-Adresse? |
 | IP-Adresse darf nicht leer sein | `Host` fehlt | IP-Adresse eintragen |
 | IP-Adresse ist nicht gültig | `Host` ist keine IP-Adresse | IP-Adresse statt Hostnamen eintragen |
+| Das Aktualisierungsintervall darf nicht negativ sein | `UpdateInterval` ist kleiner als 0 | 0 (keine Aktualisierung) oder eine Zahl von Sekunden eintragen |
+
+Bei den drei Fehlermeldungen läuft keine Aktualisierung, und Schaltbefehle werden abgewiesen. Im Log von Symcon steht der Fehler zusätzlich mit dem eingetragenen Wert, z. B. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 
 ## 3. Statusvariablen
 
@@ -103,19 +106,23 @@ Auf das Einschalten reagieren, z. B. mit einem ausgelösten Ereignis auf die Var
 
 Die Statusvariablen sind schreibgeschützt: `SetValue` aus einem Skript ändert sie nicht. Geschaltet wird mit `RequestAction` oder mit den Funktionen aus dem nächsten Abschnitt.
 
+`RequestAction` meldet jeden Fehlschlag als Warnung und liefert dann `false`: einen ungültigen Wert samt der erlaubten Werte (`Invalid value "150" for "SpeakerVolume" (allowed: 0 to 100)`), eine noch nicht eingelesene Auswahlliste und einen Befehl, den der Fernseher abgelehnt oder nicht erhalten hat (`Action "Application" with value 12 failed …`). Der Wert `-1` (`-`) der Auswahllisten ist erlaubt und tut nichts.
+
 ## 5. Funktionen für Skripte
 
 **Schalten**
 
 ```php
-STV_SetPowerStatus(int $InstanzID, bool $Status);          // true = ein, false = aus
+STV_SetPowerStatus(int $InstanzID, bool $Status): bool;    // true = ein, false = aus
 STV_SetAudioMute(int $InstanzID, bool $Status): bool;      // true = stumm
-STV_SetSpeakerVolume(int $InstanzID, int $Volume): bool;   // 0..100
-STV_SetHeadphoneVolume(int $InstanzID, int $Volume): bool; // 0..100
+STV_SetSpeakerVolume(int $InstanzID, int $Volume): bool;   // 0..100, andere Werte: Warnung
+STV_SetHeadphoneVolume(int $InstanzID, int $Volume): bool; // 0..100, andere Werte: Warnung
 STV_SetInputSource(int $InstanzID, string $Quelle): bool;  // z. B. 'HDMI 2'
 STV_StartApplication(int $InstanzID, string $App): bool;   // z. B. 'YouTube'
 STV_SendRemoteKey(int $InstanzID, string $Taste): bool;    // z. B. 'Home', 'VolumeUp'
 ```
+
+Alle liefern `true`, wenn der Fernseher den Befehl bestätigt hat. `STV_SetPowerStatus` liefert auch dann `true`, wenn der Fernseher danach im gewünschten Zustand ist, ohne geantwortet zu haben – beim Einschalten kommt das vor.
 
 Die Namen von Eingängen, Apps und Tasten sind je Gerät verschieden; gültig ist, was in den Auswahllisten der Statusvariablen steht. `STV_SetHeadphoneVolume` unterstützt nicht jedes Modell (der KD-65X8505B antwortet mit `40800 - target not supported`).
 

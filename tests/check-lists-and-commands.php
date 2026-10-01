@@ -73,12 +73,14 @@ foreach ([['StartApplication', 'Gibt es nicht', 'Unknown application: Gibt es ni
 // --- Befund 9: Auswahl schreibt erst nach Erfolg ---
 $m->antworten['avContent/setPlayContent'] = mitschnitt('standby', 'audio_getVolumeInformation');
 $vorher                                   = $m->werte()['InputSource'];
-$m->RequestAction('InputSource', $m->wertVon('InputSource', 'HDMI 4'));
+$meldung                                  = meldungVon(fn () => $m->RequestAction('InputSource', $m->wertVon('InputSource', 'HDMI 4')));
 pruefe($m->werte()['InputSource'] === $vorher, 'Eingang gewählt, TV lehnt ab (40005): Variable bleibt unverändert');
+pruefe(str_starts_with((string)$meldung, 'Action "InputSource" with value'), 'Eingang gewählt, TV lehnt ab: RequestAction meldet den Fehlschlag');
 $m->antworten['appControl/setActiveApp'] = mitschnitt('standby', 'audio_getVolumeInformation');
 $vorher                                  = $m->werte()['Application'];
-$m->RequestAction('Application', $m->wertVon('Application', 'Netflix'));
+$meldung                                 = meldungVon(fn () => $m->RequestAction('Application', $m->wertVon('Application', 'Netflix')));
 pruefe($m->werte()['Application'] === $vorher, 'App gewählt, TV lehnt ab (40005): Variable bleibt unverändert');
+pruefe(str_starts_with((string)$meldung, 'Action "Application" with value'), 'App gewählt, TV lehnt ab: RequestAction meldet den Fehlschlag');
 
 // --- Befund 11: feste Werte je Eintrag ---
 $m->antworten['appControl/setActiveApp'] = '{"result":[],"id":1}';
@@ -99,8 +101,9 @@ $m->marke();
 $m->RequestAction('Application', 12);
 pruefe(($m->anfragen[0]['params'] ?? null) === [['uri' => $original[12]['uri']]], 'gespeicherter Wert 12 startet weiterhin Netflix');
 $m->marke();
-$m->RequestAction('Application', 0);
+$meldung = meldungVon(fn () => $m->RequestAction('Application', 0));
 pruefe($m->anfragen === [], 'Wert der entfallenen App löst nichts aus');
+pruefe(str_starts_with((string)$meldung, 'Invalid value "0" for "Application" (allowed: '), 'Wert der entfallenen App: Meldung mit den erlaubten Werten');
 
 // die entfallene App kommt zurück und bekommt ihren alten Wert
 $liste['result'][0][]                          = $original[0];

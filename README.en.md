@@ -35,12 +35,12 @@ Controls Sony Bravia TVs over the network: power on and off, volume and mute, in
 1. Under *Network & Internet → Local network → IP control*, choose the authentication *Pre-Shared Key* (or *Normal and Pre-Shared Key*) and set a key, e.g. `0000`.
 2. Switch on *Remote start*. Without it, the TV cannot be switched on from standby over the network.
 
-Sony's own description: [IP control](https://pro-bravia.sony.net/develop/integrate/ip-control/).
+Sony's own description: [Remote Display Control](https://pro-bravia.sony.net/remote-display-control/).
 
 **In Symcon**
 
 1. Install the module from the Module Store under *Sony TV*.
-2. Create an instance: either a *Sony TV* instance directly or a *Sony Discovery* instance. The discovery searches the network for TVs and creates the matching *Sony TV* instances with one click; it needs Symcon's SSDP instance for that.
+2. Create an instance: either a *Sony TV* instance directly or a *Sony Discovery* instance. The discovery searches the network for TVs and creates the matching *Sony TV* instances with one click; it needs Symcon's SSDP instance for that. It only fills in the IP address; enter the Pre-Shared Key in the *Sony TV* instance afterwards.
 3. In the *Sony TV* instance, enter:
 
 | Field | Default | Meaning |
@@ -67,6 +67,9 @@ Under *Expert Parameters* there are three switches for logging:
 | inactive | the TV does not answer | is it switched off or disconnected? Is the IP address correct? |
 | IP address can not be empty | `Host` is missing | enter the IP address |
 | IP address is not valid | `Host` is not an IP address | enter an IP address instead of a host name |
+| Update interval must not be negative | `UpdateInterval` is less than 0 | enter 0 (no update) or a number of seconds |
+
+With any of these three errors no update runs and switching commands are rejected. The Symcon log additionally shows the error with the value entered, e.g. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 
 ## 3. Status variables
 
@@ -103,19 +106,23 @@ To react to the TV being switched on, use for example a triggered event on the v
 
 The status variables are read-only: `SetValue` from a script does not change them. Switch with `RequestAction` or with the functions in the next section.
 
+`RequestAction` reports every failure as a warning and then returns `false`: an invalid value together with the allowed values (`Invalid value "150" for "SpeakerVolume" (allowed: 0 to 100)`), a selection list that has not been read yet, and a command the TV rejected or did not receive (`Action "Application" with value 12 failed …`). The value `-1` (`-`) of the selection lists is allowed and does nothing.
+
 ## 5. Functions for scripts
 
 **Switching**
 
 ```php
-STV_SetPowerStatus(int $InstanceID, bool $Status);          // true = on, false = off
+STV_SetPowerStatus(int $InstanceID, bool $Status): bool;    // true = on, false = off
 STV_SetAudioMute(int $InstanceID, bool $Status): bool;      // true = muted
-STV_SetSpeakerVolume(int $InstanceID, int $Volume): bool;   // 0..100
-STV_SetHeadphoneVolume(int $InstanceID, int $Volume): bool; // 0..100
+STV_SetSpeakerVolume(int $InstanceID, int $Volume): bool;   // 0..100, other values: warning
+STV_SetHeadphoneVolume(int $InstanceID, int $Volume): bool; // 0..100, other values: warning
 STV_SetInputSource(int $InstanceID, string $Source): bool;  // e.g. 'HDMI 2'
 STV_StartApplication(int $InstanceID, string $App): bool;   // e.g. 'YouTube'
 STV_SendRemoteKey(int $InstanceID, string $Key): bool;      // e.g. 'Home', 'VolumeUp'
 ```
+
+All of them return `true` when the TV confirmed the command. `STV_SetPowerStatus` also returns `true` when the TV is in the requested state afterwards without having answered – this happens when switching on.
 
 The names of inputs, apps and keys differ from device to device; valid are the ones shown in the selection lists of the status variables. `STV_SetHeadphoneVolume` is not supported by every model (the KD-65X8505B answers `40800 - target not supported`).
 

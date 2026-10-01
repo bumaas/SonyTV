@@ -70,8 +70,9 @@ pruefe($fehler7 === mitschnitt('app-im-vordergrund', 'avContent_getPlayingConten
 $m                                     = konfigurierteInstanz('aktiv');
 $m->antworten['system/setPowerStatus'] = ['http' => 403, 'body' => mitschnitt('falscher-psk', 'system_setPowerStatus')];
 $m->marke();
-$m->RequestAction('PowerStatus', 0);
+$meldung = meldungVon(fn () => $m->RequestAction('PowerStatus', 0));
 pruefe(array_column($m->anfragen, 'method') === ['setPowerStatus', 'getPowerStatus'], 'nach dem Fehlschlag wird der Zustand neu gelesen');
+pruefe(str_starts_with((string)$meldung, 'Action "PowerStatus" with value 0 failed'), 'TV lehnt ab und bleibt an: RequestAction meldet den Fehlschlag');
 pruefe(!in_array(['PowerStatus', 0], $m->writes, true), 'kein falsches „Aus" in der Variablen');
 pruefe($m->werte()['PowerStatus'] === 2 && $m->instanzStatus() === IS_ACTIVE, 'TV bleibt An, Instanz aktiv');
 pruefe($m->pausen === [], 'nach einem Fehlschlag keine Wartezeit');

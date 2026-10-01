@@ -6,7 +6,8 @@
       "model":        "Modell",
       "manufacturer": "Hersteller",
       "unknown": "unbekannt",
-      "The configurator is currently searching for devices. This could take a while...": "Der Konfigurator sucht nach Geräten. Einen Moment ..."
+      "The configurator is currently searching for devices. This could take a while...": "Der Konfigurator sucht nach Geräten. Einen Moment ...",
+      "Instances created here only get the IP address. Afterwards enter the Pre-Shared Key in each Sony TV instance (the same key as on the TV under IP control, default 0000).": "Hier angelegte Instanzen bekommen nur die IP-Adresse. Danach in jeder Instanz Sony TV den Pre-Shared Key eintragen (derselbe Schlüssel wie am Fernseher unter IP control, Vorgabe 0000)."
     }
   }
 }

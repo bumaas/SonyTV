@@ -1,7 +1,9 @@
 {
     "translations": {
         "de": {
-            "In this instance, all parameters for controlling a Sony TV are stored. The description of the individual parameters can be found in the documentation.": "In dieser Instanz werden alle Parameter zur Steuerung eines Sony TV hinterlegt. Die Beschreibung der einzelnen Parameter ist in der Dokumentation zu finden.",
+            "Controls a Sony Bravia TV over the network. The TV has to be prepared once, see the notes at the fields.": "Steuert einen Sony-Bravia-Fernseher über das Netzwerk. Der Fernseher muss einmalig vorbereitet werden, siehe die Hinweise an den Feldern.",
+            "IP address of the TV, not a host name. A fixed address is recommended.": "IP-Adresse des Fernsehers, kein Hostname. Eine feste Adresse ist empfehlenswert.",
+            "Pre-Shared Key: a key of your choice that the TV expects with every command. On the TV under Network & Internet → Local network → IP control (menu names differ between TV generations), set the authentication to 'Pre-Shared Key' (or 'Normal and Pre-Shared Key') and enter the key. Enter the same key here (default 0000). Also switch on 'Remote start' there, otherwise the TV cannot be switched on from standby. With a wrong key the TV still reports its power state, but the lists stay empty and commands fail with error 403 (Forbidden) in the log.": "Pre-Shared Key: ein frei gewählter Schlüssel, den der Fernseher bei jedem Befehl erwartet. Am Fernseher unter Network & Internet → Local network → IP control (Menünamen je nach Gerätegeneration abweichend) die Authentifizierung 'Pre-Shared Key' (oder 'Normal and Pre-Shared Key') wählen und den Schlüssel eintragen. Hier denselben Schlüssel eintragen (Vorgabe 0000). Dort auch 'Remote start' einschalten, sonst lässt sich der Fernseher aus dem Standby nicht einschalten. Mit einem falschen Schlüssel meldet der Fernseher zwar seinen Zustand, die Listen bleiben aber leer, und Befehle scheitern mit Fehler 403 (Forbidden) im Log.",
             "IP address of Sony TV": "IP Adresse des Sony TV",
             "If the status variables are to be updated automatically, please enter an interval in seconds (0 = no update).": "Wenn die Statusvariablen automatisch aktualisiert werden sollen, bitte ein Intervall in Sekunden eintragen (0 = keine Aktualisierung).",
             "Expert Parameters": "Experten Einstellungen",
@@ -20,6 +22,7 @@
             "Application List not yet set. Please update the application list.": "Die Applikationsliste wurde noch nicht ermittelt. Bitte die Applikationsliste aktualisieren.",
             "IP address can not be empty.": "IP Adresse darf nicht leer sein.",
             "IP address is not valid.": "IP Adresse ist nicht gültig.",
+            "Update interval must not be negative.": "Das Aktualisierungsintervall darf nicht negativ sein.",
             "Error writing the file.": "Fehler beim Erstellen der Datei.",
             "Error while updating.": "Fehler beim Aktualisieren.",
             "Pre-Shared Key": "Pre-Shared Key (PSK)",

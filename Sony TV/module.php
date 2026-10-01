@@ -31,6 +31,10 @@ trait SonyConstants
 {
     private const int STATUS_INST_IP_IS_EMPTY   = 202;
     private const int STATUS_INST_IP_IS_INVALID = 204; //IP-Adresse ist ungültig
+    private const int STATUS_INST_INTERVAL_IS_INVALID = 205;
+
+    private const int VOLUME_MIN = 0;
+    private const int VOLUME_MAX = 100;
 
     private const string PROP_HOST            = 'Host';
     private const string PROP_PSK             = 'PSK';
@@ -114,6 +118,8 @@ class SonyTV extends IPSModuleStrict
         if ($configurationError !== 0) {
             $this->SetTimerInterval(self::TIMER_UPDATE, 0);
             $this->SetStatus($configurationError);
+            // der Statuscode allein sagt einer KI über MCP nichts, der Text dazu steht nur in der form.json
+            $this->Logger_Err('Configuration error: ' . $this->getConfigurationErrorText($configurationError));
             return;
         }
 
@@ -146,74 +152,166 @@ class SonyTV extends IPSModuleStrict
      */
     public function RequestAction(string $Ident, mixed $Value): void
     {
-        switch ($Ident) {
+        // Die Methode ist void: Nur eine Warnung zeigt dem Aufrufer (Skript, Visualisierung, KI über MCP), dass
+        // nichts gesendet wurde oder der TV abgelehnt hat. Ohne sie liefert das globale RequestAction true.
+        $configurationError = $this->getConfigurationError();
+        if ($configurationError !== 0) {
+            trigger_error('Instance is not configured: ' . $this->getConfigurationErrorText($configurationError), E_USER_WARNING);
+            return;
+        }
+
+        $command = $this->getCommand($Ident, $Value);
+        if ($command === null) {
+            return;
+        }
+
+        if (!$command()) {
+            trigger_error(
+                sprintf('Action "%s" with value %s failed (the TV did not confirm the command, see debug)', $Ident, var_export($Value, true)),
+                E_USER_WARNING
+            );
+        }
+    }
+
+    /**
+     * Prüft den Wert einer Aktion und liefert den Befehl dazu, der true bei Erfolg liefert.
+     * Bei einem ungültigen Wert, einer leeren Auswahlliste oder einem unbekannten Ident gibt es eine Warnung und null.
+     *
+     * @throws \JsonException
+     */
+    private function getCommand(string $ident, mixed $value): ?callable
+    {
+        switch ($ident) {
             case self::VAR_IDENT_POWER_STATUS:
-                $this->SetPowerStatus(is_bool($Value) ? $Value : (int)$Value === self::STATUS_ACTIVE);
-                break;
+                $status = is_bool($value) ? ($value ? self::STATUS_ACTIVE : self::STATUS_OFF) : $this->toInteger($value);
+                if (!in_array($status, [self::STATUS_OFF, self::STATUS_STANDBY, self::STATUS_ACTIVE], true)) {
+                    $this->rejectValue($ident, $value, '0 = Off, 1 = Standby, 2 = On');
+                    return null;
+                }
+                return fn (): bool => $this->SetPowerStatus($status === self::STATUS_ACTIVE);
 
             case self::VAR_IDENT_SEND_REMOTE_KEY:
-                $entry = $this->getListEntries($Ident)[(int)$Value] ?? null;
-                if ($entry !== null) {
-                    $this->SendRemoteKey($entry['name']);
-                }
-                break;
-
             case self::VAR_IDENT_INPUT_SOURCE:
-                $entry = $this->getListEntries($Ident)[(int)$Value] ?? null;
-                if ($entry !== null) {
-                    $this->SetInputSource($entry['title']);
-                }
-                break;
-
             case self::VAR_IDENT_APPLICATION:
-                $entry = $this->getListEntries($Ident)[(int)$Value] ?? null;
-                if ($entry !== null) {
-                    $this->StartApplication($entry['title']);
-                }
-                break;
+                return $this->getListCommand($ident, $value);
 
             case self::VAR_IDENT_AUDIO_MUTE:
-                $this->SetAudioMute(is_string($Value) ? filter_var($Value, FILTER_VALIDATE_BOOLEAN) : (bool)$Value);
-                break;
+                $mute = is_bool($value) ? $value : filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                if (!is_bool($mute)) {
+                    $this->rejectValue($ident, $value, 'true, false');
+                    return null;
+                }
+                return fn (): bool => $this->SetAudioMute($mute);
 
             case self::VAR_IDENT_SPEAKER_VOLUME:
-                $this->SetSpeakerVolume((int)round((float)$Value));
-                break;
-
             case self::VAR_IDENT_HEADPHONE_VOLUME:
-                $this->SetHeadphoneVolume((int)round((float)$Value));
-                break;
+                $volume = is_numeric($value) ? (int)round((float)$value) : null;
+                if (!$this->isValidVolume($ident, $volume ?? $value)) {
+                    return null;
+                }
+                return $ident === self::VAR_IDENT_SPEAKER_VOLUME
+                    ? fn (): bool => $this->SetSpeakerVolume($volume)
+                    : fn (): bool => $this->SetHeadphoneVolume($volume);
 
             case 'UpdateAll':
-                $this->UpdateAll();
-                break;
+                return fn (): bool => $this->UpdateAll();
 
             case 'UpdateStatusVariables':
-                $this->runWithVisualFeedback([$this, 'UpdateAll'], 'Error while updating.');
-                break;
+                return fn (): bool => $this->runWithVisualFeedback([$this, 'UpdateAll'], 'Error while updating.');
 
             case 'GetSourceListInfo':
             case 'UpdateApplicationList':
             case 'UpdateRemoteKeyList':
-                $this->runWithVisualFeedback([$this, $Ident], 'Error while updating.');
-                break;
+                return fn (): bool => $this->runWithVisualFeedback([$this, $ident], 'Error while updating.');
 
             case 'WriteAPIInformationToFile':
-                $this->runWithVisualFeedback(fn (): bool => $this->WriteAPIInformationToFile(''), 'Error writing the file.');
-                break;
+                return fn (): bool => $this->runWithVisualFeedback(fn (): bool => $this->WriteAPIInformationToFile(''), 'Error writing the file.');
 
             default:
-                trigger_error('Unexpected ident: ' . $Ident);
+                trigger_error('Unexpected ident: ' . $ident, E_USER_WARNING);
+                return null;
         }
     }
 
-    private function runWithVisualFeedback(callable $action, string $failureTranslationKey): void
+    /**
+     * Befehl für einen Eintrag einer Auswahlliste (Taste, Eingang, App). -1 („-") ist keine Auswahl und tut nichts.
+     *
+     * @throws \JsonException
+     */
+    private function getListCommand(string $ident, mixed $value): ?callable
+    {
+        [, , , , $captionField, $emptyMessage] = $this->getListDefinition($ident);
+
+        $entries = $this->getListEntries($ident);
+        if ($entries === []) {
+            trigger_error($emptyMessage, E_USER_WARNING);
+            return null;
+        }
+
+        $number = $this->toInteger($value);
+        if ($number === self::NO_SELECTION) {
+            return static fn (): bool => true;
+        }
+
+        $entry = $number === null ? null : ($entries[$number] ?? null);
+        if ($entry === null) {
+            $allowed = [];
+            foreach ($entries as $entryValue => $listEntry) {
+                $allowed[] = $entryValue . ' = ' . html_entity_decode($listEntry[$captionField]);
+            }
+            $this->rejectValue($ident, $value, implode(', ', $allowed));
+            return null;
+        }
+
+        return match ($ident) {
+            self::VAR_IDENT_SEND_REMOTE_KEY => fn (): bool => $this->SendRemoteKey($entry['name']),
+            self::VAR_IDENT_INPUT_SOURCE    => fn (): bool => $this->SetInputSource($entry['title']),
+            self::VAR_IDENT_APPLICATION     => fn (): bool => $this->StartApplication($entry['title']),
+        };
+    }
+
+    /**
+     * Ganzzahl aus einem Aktionswert (auch '12' oder 12.0), null bei allem anderen.
+     */
+    private function toInteger(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+        if ((is_float($value) || is_string($value)) && is_numeric($value) && (float)$value === floor((float)$value)) {
+            return (int)$value;
+        }
+        return null;
+    }
+
+    private function isValidVolume(string $ident, mixed $volume): bool
+    {
+        if (is_int($volume) && $volume >= self::VOLUME_MIN && $volume <= self::VOLUME_MAX) {
+            return true;
+        }
+        $this->rejectValue($ident, $volume, self::VOLUME_MIN . ' to ' . self::VOLUME_MAX);
+        return false;
+    }
+
+    private function rejectValue(string $ident, mixed $value, string $allowed): void
+    {
+        $shownValue = match (true) {
+            is_bool($value)   => $value ? 'true' : 'false',
+            is_scalar($value) => (string)$value,
+            default           => gettype($value),
+        };
+        trigger_error(sprintf('Invalid value "%s" for "%s" (allowed: %s)', $shownValue, $ident, $allowed), E_USER_WARNING);
+    }
+
+    private function runWithVisualFeedback(callable $action, string $failureTranslationKey): bool
     {
         if ($action()) {
             $this->MsgBox($this->Translate('OK'));
-        } else {
-            $this->MsgBox($this->Translate($failureTranslationKey));
+            return true;
         }
+
+        $this->MsgBox($this->Translate($failureTranslationKey));
+        return false;
     }
 
     /**
@@ -250,18 +348,26 @@ class SonyTV extends IPSModuleStrict
     }
 
     /**
+     * Schaltet den TV ein (true) oder aus (false).
+     *
+     * @return bool true, wenn der TV den Befehl bestätigt hat oder danach im gewünschten Zustand ist
+     *              (ein Timeout beim Einschalten kommt vor, obwohl der TV schaltet)
+     *
      * @throws \JsonException
      */
-    public function SetPowerStatus(bool $Status): void
+    public function SetPowerStatus(bool $Status): bool
     {
-        $response = $this->callRestApi('system', 'setPowerStatus', [['status' => $Status]], '1.0', [CURLE_OPERATION_TIMEDOUT], []);
+        $response  = $this->callRestApi('system', 'setPowerStatus', [['status' => $Status]], '1.0', [CURLE_OPERATION_TIMEDOUT], []);
+        $confirmed = $this->getResult($response) !== null;
 
-        if ($this->getResult($response) !== null) {
+        if ($confirmed) {
             $this->pause(2); // pause until Sony processes the command
         }
 
         // auch nach einem Fehlschlag den tatsächlichen Zustand lesen, statt „Aus" anzunehmen
-        $this->getPowerStatus();
+        $powerStatus = $this->getPowerStatus();
+
+        return $confirmed || ($powerStatus !== null && ($powerStatus === self::STATUS_ACTIVE) === $Status);
     }
 
     /**
@@ -277,7 +383,7 @@ class SonyTV extends IPSModuleStrict
     {
         $entries = $this->getListEntries(self::VAR_IDENT_INPUT_SOURCE);
         if ($entries === []) {
-            trigger_error('Source list not yet read. Please update the list of input sources.', E_USER_WARNING);
+            trigger_error($this->getListDefinition(self::VAR_IDENT_INPUT_SOURCE)[5], E_USER_WARNING);
             return false;
         }
 
@@ -346,6 +452,10 @@ class SonyTV extends IPSModuleStrict
      */
     public function SetSpeakerVolume(int $volume): bool
     {
+        if (!$this->isValidVolume(self::VAR_IDENT_SPEAKER_VOLUME, $volume)) {
+            return false;
+        }
+
         $response = $this->callRestApi('audio', 'setAudioVolume', [['target' => 'speaker', 'volume' => (string)$volume]], '1.0', [], []);
 
         if ($this->getResult($response) !== null) {
@@ -367,6 +477,10 @@ class SonyTV extends IPSModuleStrict
      */
     public function SetHeadphoneVolume(int $volume): bool
     {
+        if (!$this->isValidVolume(self::VAR_IDENT_HEADPHONE_VOLUME, $volume)) {
+            return false;
+        }
+
         $response = $this->callRestApi('audio', 'setAudioVolume', [['target' => 'headphone', 'volume' => (string)$volume]], '1.0', [], []);
 
         if ($this->getResult($response) !== null) {
@@ -390,7 +504,7 @@ class SonyTV extends IPSModuleStrict
     {
         $entries = $this->getListEntries(self::VAR_IDENT_APPLICATION);
         if ($entries === []) {
-            trigger_error('Application List not yet set. Please update the application list.', E_USER_WARNING);
+            trigger_error($this->getListDefinition(self::VAR_IDENT_APPLICATION)[5], E_USER_WARNING);
             return false;
         }
 
@@ -440,16 +554,19 @@ class SonyTV extends IPSModuleStrict
     }
 
     /**
-     * Name, Position, Attribut, Schlüsselfeld und Beschriftungsfeld einer Auswahlvariablen.
+     * Name, Position, Attribut, Schlüsselfeld, Beschriftungsfeld und Meldung bei leerer Liste einer Auswahlvariablen.
      *
-     * @return array{0: string, 1: int, 2: string, 3: string, 4: string}
+     * @return array{0: string, 1: int, 2: string, 3: string, 4: string, 5: string}
      */
     private function getListDefinition(string $ident): array
     {
         return match ($ident) {
-            self::VAR_IDENT_SEND_REMOTE_KEY => ['Send Remote Key', 50, self::ATTR_REMOTECONTROLLERINFO, 'name', 'name'],
-            self::VAR_IDENT_INPUT_SOURCE    => ['Input Source', 60, self::ATTR_SOURCELIST, 'uri', 'title'],
-            self::VAR_IDENT_APPLICATION     => ['Start Application', 70, self::ATTR_APPLICATIONLIST, 'uri', 'title'],
+            self::VAR_IDENT_SEND_REMOTE_KEY => ['Send Remote Key', 50, self::ATTR_REMOTECONTROLLERINFO, 'name', 'name',
+                'Remote key list not yet read. Please update the remote key list.'],
+            self::VAR_IDENT_INPUT_SOURCE => ['Input Source', 60, self::ATTR_SOURCELIST, 'uri', 'title',
+                'Source list not yet read. Please update the list of input sources.'],
+            self::VAR_IDENT_APPLICATION => ['Start Application', 70, self::ATTR_APPLICATIONLIST, 'uri', 'title',
+                'Application List not yet set. Please update the application list.'],
         };
     }
 
@@ -881,6 +998,13 @@ class SonyTV extends IPSModuleStrict
             )
         );
 
+        // ohne gültigen Host ginge die Anfrage an „http:///sony/…" und liefe erst in den Timeout
+        $configurationError = $this->getConfigurationError();
+        if ($configurationError !== 0) {
+            trigger_error('Instance is not configured: ' . $this->getConfigurationErrorText($configurationError), E_USER_WARNING);
+            return false;
+        }
+
         // eine IPv6-Adresse steht in einer URL in eckigen Klammern
         $url = 'http://' . (str_contains($host, ':') ? '[' . $host . ']' : $host) . '/sony/' . $service;
         [$response, $curl_errno, $curl_error, $httpCode] = $this->executeCurl($url, $headers, $data);
@@ -1026,7 +1150,7 @@ class SonyTV extends IPSModuleStrict
 
         $entries = $this->getListEntries(self::VAR_IDENT_SEND_REMOTE_KEY);
         if ($entries === []) {
-            trigger_error('Remote key list not yet read. Please update the remote key list.', E_USER_WARNING);
+            trigger_error($this->getListDefinition(self::VAR_IDENT_SEND_REMOTE_KEY)[5], E_USER_WARNING);
             return false;
         }
 
@@ -1311,7 +1435,26 @@ class SonyTV extends IPSModuleStrict
             return self::STATUS_INST_IP_IS_INVALID;
         }
 
+        if ($this->ReadPropertyInteger(self::PROP_UPDATE_INTERVAL) < 0) {
+            return self::STATUS_INST_INTERVAL_IS_INVALID;
+        }
+
         return 0;
+    }
+
+    /**
+     * Klartext zu einem Konfigurationsfehler, mit Wert und erlaubtem Bereich.
+     */
+    private function getConfigurationErrorText(int $configurationError): string
+    {
+        return match ($configurationError) {
+            self::STATUS_INST_IP_IS_EMPTY   => 'IP address can not be empty.',
+            self::STATUS_INST_IP_IS_INVALID => sprintf("IP address '%s' is not valid (allowed: IPv4 or IPv6 address).", $this->ReadPropertyString(self::PROP_HOST)),
+            self::STATUS_INST_INTERVAL_IS_INVALID => sprintf(
+                'update interval %s is not valid (allowed: 0 or more seconds).',
+                $this->ReadPropertyInteger(self::PROP_UPDATE_INTERVAL)
+            ),
+        };
     }
 
     private function Logger_Err(string $message): void

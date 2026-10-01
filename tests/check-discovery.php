@@ -109,4 +109,11 @@ pruefe($meldung === null, 'gescheiterte Suche bricht nicht ab' . ($meldung === n
 pruefe($d->sucheLaeuft() === false, 'gescheiterte Suche: Flag ist zurückgesetzt');
 pruefe(count($d->zeilen()) === 2 && $d->formular['searchingInfo.visible'] === false, 'gescheiterte Suche: angelegte Instanzen stehen in der Liste, Suchhinweis aus');
 
+// MCP-Test 01.10.2026, Regel 1: Der Konfigurator legt nur den Host an; das Formular muss sagen, dass der
+// Pre-Shared Key danach in der Instanz Sony TV einzutragen ist.
+$d->sucheStarten(); // keine neue Suche anstoßen
+$formular = json_decode($d->GetConfigurationForm(), true, 512, JSON_THROW_ON_ERROR);
+$texte    = implode("\n", array_column(array_filter(array_merge($formular['elements'] ?? [], $formular['actions'] ?? []), static fn (array $e): bool => $e['type'] === 'Label'), 'caption'));
+pruefe(str_contains($texte, 'Pre-Shared Key') && str_contains($texte, 'Sony TV'), 'Konfigurator-Formular sagt, dass der Pre-Shared Key in der Instanz Sony TV nachzutragen ist');
+
 ergebnis();

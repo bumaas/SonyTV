@@ -29,8 +29,9 @@ pruefe($m->writes === [['SendRemoteKey', $m->wertVon('SendRemoteKey', 'Home')]],
 // --- Befund 9: Auswahl in der Visualisierung schreibt erst nach Erfolg ---
 $m->antworten['IRCC/X_SendIRCC'] = ['http' => 403, 'body' => ''];
 $vorher                          = $m->werte()['SendRemoteKey'];
-$m->RequestAction('SendRemoteKey', $m->wertVon('SendRemoteKey', 'VolumeUp'));
+$meldung                         = meldungVon(fn () => $m->RequestAction('SendRemoteKey', $m->wertVon('SendRemoteKey', 'VolumeUp')));
 pruefe($m->werte()['SendRemoteKey'] === $vorher, 'Auswahl ohne Erfolg: Variable bleibt unverändert');
+pruefe(str_starts_with((string)$meldung, 'Action "SendRemoteKey" with value'), 'Auswahl ohne Erfolg: RequestAction meldet den Fehlschlag');
 
 // unbekannte Taste geht nicht raus
 $m->marke();
