@@ -67,4 +67,24 @@ pruefe($m->instanzStatus() === 204 && $m->pings === [] && $m->anfragen === [], '
 $m = konfigurierteInstanz('aktiv', 'fd00::21');
 pruefe(($m->anfragen[0]['url'] ?? '') === 'http://[fd00::21]/sony/system', 'IPv6-Adresse in eckigen Klammern');
 
+// MCP-Test 01.10.2026, Befund 6: Im Standby genügte ein verpasster Ping für „Ausgeschaltet" (am nuc 06:40:52 für
+// 10 s, samt Archiveintrag); seit build 37 hieße das zusätzlich Status 201. Standby prüft jetzt wie „An".
+$m = konfigurierteInstanz('standby');
+pruefe($m->werte()['PowerStatus'] === 1, 'Ausgangslage: TV im Standby');
+SonyTVHarness::$ping = [false, true];
+$m->marke();
+$m->UpdateAll();
+pruefe(count($m->pings) === 2, 'Standby, ein verlorener Ping: zweiter Versuch');
+pruefe($m->werte()['PowerStatus'] === 1 && $m->instanzStatus() === IS_ACTIVE, 'Standby, ein verlorener Ping: TV bleibt Standby, Instanz aktiv');
+pruefe(!in_array(['PowerStatus', 0], $m->writes, true), 'Standby, ein verlorener Ping: kein „Aus" in der Variablen (kein Archiveintrag)');
+
+SonyTVHarness::$ping = false;
+$m->marke();
+$m->UpdateAll();
+pruefe(count($m->pings) === 3 && $m->werte()['PowerStatus'] === 0 && $m->instanzStatus() === 201, 'Standby, drei Pings ohne Antwort: Aus, Status 201');
+$m->marke();
+$m->UpdateAll();
+pruefe(count($m->pings) === 1, 'danach (TV aus) wieder nur ein Ping je Lauf');
+SonyTVHarness::$ping = true;
+
 ergebnis();

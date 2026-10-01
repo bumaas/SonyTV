@@ -129,9 +129,9 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
 - **MCP-Test vom 01.10.2026** (Regeln in `~\.claude\skills\symcon-modul-repo\mcp-tauglichkeit.md`): erledigt
   sind Regel 8, die Wertebereiche und Regel 1 (PSK-Hinweis in Formular und Konfigurator, `tests/check-form-help.php`;
   build 36) sowie Regel 3 (Status 201 und 203, `tests/check-status-reachability.php`; build 37) und die Rohmeldung
-  zur 404-Antwort (`tests/check-power-status-404.php`; build 38). Offen: Flattern im Standby nach einem verpassten
-  Ping (Regel 11, mit Status 201 jetzt auffälliger), keine Erklärfunktion und Knopf-Ergebnisse nur als Popup
-  (Regeln 5, 7), „Standby" als Schaltwert sendet dasselbe wie „Aus".
+  zur 404-Antwort (`tests/check-power-status-404.php`; build 38), das Flattern im Standby (Regel 11, drei Pings
+  auch im Standby, `tests/check-connection.php`; build 39). Offen: keine Erklärfunktion und Knopf-Ergebnisse nur
+  als Popup (Regeln 5, 7), „Standby" als Schaltwert sendet dasselbe wie „Aus".
 - **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die
   Antwort auf `setActiveApp`.
 - Der Kopfhörer-Eintrag von `getVolumeInformation` schreibt ebenfalls `AudioMute` und kann den Wert des

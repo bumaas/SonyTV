@@ -861,7 +861,8 @@ class SonyTV extends IPSModuleStrict
 
     private function checkConnection(string $host): bool
     {
-        $attempts = $this->GetValue(self::VAR_IDENT_POWER_STATUS) === self::STATUS_ACTIVE ? self::PING_ATTEMPTS : 1;
+        // ein verlorenes Paket soll einen erreichbaren TV (An oder Standby) nicht auf „Aus" setzen; ist er schon aus, genügt einer
+        $attempts = $this->GetValue(self::VAR_IDENT_POWER_STATUS) === self::STATUS_OFF ? 1 : self::PING_ATTEMPTS;
 
         for ($i = 1; $i <= $attempts; $i++) {
             $isConnected = $this->ping($host, self::PING_TIMEOUT_MS);
