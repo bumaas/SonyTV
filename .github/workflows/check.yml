@@ -26,5 +26,9 @@ jobs:
         run: php tests/check_locale.php
       - name: Darstellungsparameter
         run: php tests/check_presentations.php
+      - name: MCP-Tauglichkeit (statische Regeln, bumaas/symcon-mcp-check)
+        uses: bumaas/symcon-mcp-check@v1
+        with:
+          language: de
       - name: Modultests
         run: for t in tests/check-*.php; do echo "== $t"; php "$t" || exit 1; done
