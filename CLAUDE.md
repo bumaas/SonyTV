@@ -132,6 +132,11 @@ Die Erstbelegung übernimmt die Position, die bis build 31 der Wert war. `getLis
 Einträge mit ihrem Wert als Schlüssel; `RequestAction` schaltet darüber, nicht über den angezeigten Text.
 Die Variablen werden erst nach bestätigtem Befehl geschrieben.
 
+Jede Option einer Aufzählung trägt alle Felder der Doku (`Value`, `Caption`, `IconActive`, `IconValue`,
+`Color`), gebaut von `enumerationOption()`. Bis build 43 fehlten die drei letzten. Der Bearbeiten-Dialog der
+Variable meldete dann „Ungültiges Formular“ samt `Undefined array key "IconActive"` (Forum-PN t/144573,
+StephanBERN, KD-75XF8596). Bestehende Variablen bekommen die vollständigen Optionen beim nächsten `ApplyChanges`.
+
 Die Profile `STV.*` früherer Versionen räumt `removeUnusedLegacyProfiles()` in `ApplyChanges` ab, sobald
 keine Variable (Profil, eigenes Profil, Darstellung „Legacy Profil") und kein Diagramm sie nutzt.
 `IPS_GetMediaContent()` liefert für manche Diagramme `false` samt Warnung (am nuc 21 von 58); **ein

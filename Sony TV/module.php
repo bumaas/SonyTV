@@ -1533,9 +1533,9 @@ class SonyTV extends IPSModuleStrict
         $this->RegisterVariableInteger(self::VAR_IDENT_POWER_STATUS, $this->Translate('Status'), [
             'PRESENTATION' => VARIABLE_PRESENTATION_ENUMERATION,
             'OPTIONS'      => json_encode([
-                ['Value' => self::STATUS_OFF, 'Caption' => $this->Translate('Off / not reachable')],
-                ['Value' => self::STATUS_STANDBY, 'Caption' => $this->Translate('Standby')],
-                ['Value' => self::STATUS_ACTIVE, 'Caption' => $this->Translate('On')],
+                $this->enumerationOption(self::STATUS_OFF, $this->Translate('Off / not reachable')),
+                $this->enumerationOption(self::STATUS_STANDBY, $this->Translate('Standby')),
+                $this->enumerationOption(self::STATUS_ACTIVE, $this->Translate('On')),
             ], JSON_THROW_ON_ERROR),
         ], 10);
 
@@ -1582,9 +1582,9 @@ class SonyTV extends IPSModuleStrict
     {
         [$name, $position, , , $captionField] = $this->getListDefinition($ident);
 
-        $options = [['Value' => self::NO_SELECTION, 'Caption' => '-']];
+        $options = [$this->enumerationOption(self::NO_SELECTION, '-')];
         foreach ($this->getListEntries($ident) as $value => $entry) {
-            $options[] = ['Value' => $value, 'Caption' => html_entity_decode($entry[$captionField])];
+            $options[] = $this->enumerationOption($value, html_entity_decode($entry[$captionField]));
         }
 
         $created = $this->RegisterVariableInteger($ident, $this->Translate($name), [
@@ -1595,6 +1595,15 @@ class SonyTV extends IPSModuleStrict
         if ($created) {
             $this->SetValue($ident, self::NO_SELECTION);
         }
+    }
+
+    /**
+     * Option einer Aufzählung mit allen Feldern der Doku. Ohne IconActive meldet der Bearbeiten-Dialog
+     * der Variable „Ungültiges Formular“; Color -1 ist die Vorgabe des Dialogs für „keine Farbe“.
+     */
+    private function enumerationOption(int $value, string $caption): array
+    {
+        return ['Value' => $value, 'Caption' => $caption, 'IconActive' => false, 'IconValue' => '', 'Color' => -1];
     }
 
     /**

@@ -60,6 +60,17 @@ pruefe(count(optionen($m, 'SendRemoteKey')) === 147, 'SendRemoteKey: alle 146 Ta
 $apps = json_decode($m->attribut('ApplicationList'), true, 512, JSON_THROW_ON_ERROR);
 pruefe(count(optionen($m, 'Application')) === 28, 'Application: alle 27 Apps plus „-“');
 
+// Jede Option trägt alle Felder der Doku (Value, Caption, IconActive, IconValue, Color). Fehlt IconActive,
+// meldet der Bearbeiten-Dialog der Variable „Ungültiges Formular“ (Forum-PN t/144573 vom 04.10.2026).
+foreach (['PowerStatus', 'SendRemoteKey', 'InputSource', 'Application'] as $ident) {
+    $felder = array_map(
+        static fn (array $option) => array_keys($option),
+        json_decode(darstellung($m, $ident)['OPTIONS'], true, 512, JSON_THROW_ON_ERROR)
+    );
+    $vollstaendig = array_filter($felder, static fn (array $f) => array_diff(['Value', 'Caption', 'IconActive', 'IconValue', 'Color'], $f) === []);
+    pruefe(count($vollstaendig) === count($felder), "$ident: jede Option hat IconActive, IconValue und Color");
+}
+
 // Auswahl schaltet über den Wert des Eintrags (Erstbelegung = Position)
 $m->antworten['IRCC/X_SendIRCC']          = '';
 $m->antworten['avContent/setPlayContent'] = '{"result":[],"id":1}';
