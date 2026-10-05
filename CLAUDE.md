@@ -69,6 +69,11 @@ Konfiguration, Ping, `getPowerStatus`, den Schlüssel über `getPlayingContentIn
 7; falsch: 403 — alles mitgeschnitten) und die drei Listen. Er schaltet nichts und schreibt keine Variable;
 nur `noteAuthentication()` kann den Instanzstatus dabei auf 203 setzen, was dann auch stimmt.
 
+Die Ausgabe läuft über `Translate()` (seit build 45, vorher nur englisch), ebenso `getConfigurationErrorText()` und
+damit die Log-Zeile zum Konfigurationsfehler. Bezeichner (`PowerStatus`, `IPS_RequestAction(…)`) und die Menünamen
+am TV bleiben wörtlich. Der Stub übersetzt nicht; `SonyTVHarness::$sprache = 'de'` lädt `locale.json`, und
+`tests/check-self-test.php` verlangt damit für jeden Fall, dass keine Zeile englisch bleibt.
+
 ## Nähte für die Tests
 
 Alles, was im Betrieb ins Netz geht, wartet oder vom Kernel abhängt, läuft über eine überschreibbare

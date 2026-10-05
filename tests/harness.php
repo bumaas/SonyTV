@@ -70,7 +70,19 @@ final class SonyTVHarness extends SonyTV
     public array $status = [];
     /** @var array<string, int> letztes SetTimerInterval je Timer */
     public array $timer = [];
+    /** null = Schlüssel zurückgeben wie der Stub, 'de' = Übersetzung aus locale.json */
+    public static ?string $sprache = null;
     private int $logOffset = 0;
+
+    public function Translate(string $Text): string
+    {
+        if (self::$sprache === null) {
+            return parent::Translate($Text);
+        }
+        static $uebersetzungen = null;
+        $uebersetzungen ??= json_decode(file_get_contents(dirname(__DIR__) . '/Sony TV/locale.json'), true, 512, JSON_THROW_ON_ERROR)['translations'];
+        return $uebersetzungen[self::$sprache][$Text] ?? $Text;
+    }
 
     protected function getTime(): int
     {

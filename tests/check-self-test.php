@@ -102,4 +102,47 @@ $text = selbsttest($m);
 pruefe(str_contains($text, '• Switching PowerStatus') && str_contains($text, 'cannot be switched fully off'), 'Selbsttest: Hinweis zum Schalten von PowerStatus');
 pruefe(str_ends_with(rtrim($text), '0 errors, 0 warnings'), 'Selbsttest: der Hinweis zählt weder als Fehler noch als Warnung');
 
+// --- Ausgabe in der Sprache der Anlage (Burkhard, 05.10.2026: „die Ausgaben im Dialog sollten lokalisiert sein“) ---
+// Derselbe Fall einmal mit den Schlüsseln, einmal mit locale.json: keine Zeile darf gleich bleiben.
+$faelle = [
+    'Standby'               => static fn (): SonyTVHarness => konfigurierteInstanz('standby'),
+    'falscher Schlüssel'    => static function (): SonyTVHarness {
+        $m                                               = konfigurierteInstanz('aktiv');
+        $m->antworten['avContent/getPlayingContentInfo'] = ['http' => 403, 'body' => mitschnitt('falscher-psk', 'avContent_getPlayingContentInfo')];
+        return $m;
+    },
+    'Schlüssel ungeprüft'   => static function (): SonyTVHarness {
+        $m                                               = konfigurierteInstanz('standby');
+        $m->antworten['avContent/getPlayingContentInfo'] = CURLE_OPERATION_TIMEDOUT;
+        return $m;
+    },
+    'leere App-Liste'       => static function (): SonyTVHarness {
+        $m = konfigurierteInstanz('standby');
+        $m->attributSetzen('ApplicationList', '[]');
+        return $m;
+    },
+    'kein Ping'             => static function (): SonyTVHarness {
+        SonyTVHarness::$ping = false;
+        return konfigurierteInstanz('standby');
+    },
+    'kein getPowerStatus'   => static function (): SonyTVHarness {
+        $m                                       = konfigurierteInstanz('standby');
+        $m->antworten['system/getPowerStatus']   = CURLE_OPERATION_TIMEDOUT;
+        return $m;
+    },
+    'Konfigurationsfehler'  => static fn (): SonyTVHarness => neueInstanz(),
+];
+foreach ($faelle as $fall => $instanz) {
+    $texte = [];
+    foreach ([null, 'de'] as $sprache) {
+        $m                      = $instanz();
+        SonyTVHarness::$sprache = $sprache;
+        $texte[]                = explode("\n", selbsttest($m));
+        SonyTVHarness::$sprache = null;
+        SonyTVHarness::$ping    = true;
+    }
+    $gleich = array_intersect_assoc($texte[0], $texte[1]);
+    pruefe(count($texte[0]) === count($texte[1]) && $gleich === [], "deutsch ($fall): jede Zeile übersetzt" . ($gleich === [] ? '' : ' — unverändert: ' . implode(' | ', $gleich)));
+}
+
 ergebnis();

@@ -376,19 +376,27 @@ class SonyTV extends IPSModuleStrict
             $errors += $level === 'error' ? 1 : 0;
             $warnings += $level === 'warn' ? 1 : 0;
         };
-        $summary = static function () use (&$lines, &$errors, &$warnings): string {
-            $lines[] = sprintf('%d errors, %d warnings', $errors, $warnings);
+        $summaryFormat = $this->Translate('%d errors, %d warnings');
+        $summary       = static function () use (&$lines, &$errors, &$warnings, $summaryFormat): string {
+            $lines[] = sprintf($summaryFormat, $errors, $warnings);
             return implode("\n", $lines);
         };
 
         $configurationError = $this->getConfigurationError();
         if ($configurationError !== 0) {
-            $add('error', 'Configuration: ' . $this->getConfigurationErrorText($configurationError), 'Correct the setting and apply the changes.');
+            $add(
+                'error',
+                sprintf($this->Translate('Configuration: %s'), $this->getConfigurationErrorText($configurationError)),
+                $this->Translate('Correct the setting and apply the changes.')
+            );
             return $summary();
         }
         $interval = $this->ReadPropertyInteger(self::PROP_UPDATE_INTERVAL);
-        $add('ok', 'Configuration: host ' . $this->ReadPropertyString(self::PROP_HOST) . ', update interval '
-                   . ($interval === 0 ? 'off (no automatic update)' : $interval . ' s'));
+        $add('ok', sprintf(
+            $this->Translate('Configuration: host %s, update interval %s'),
+            $this->ReadPropertyString(self::PROP_HOST),
+            $interval === 0 ? $this->Translate('off (no automatic update)') : $interval . ' s'
+        ));
 
         $host    = $this->ReadPropertyString(self::PROP_HOST);
         $reached = false;
@@ -398,23 +406,27 @@ class SonyTV extends IPSModuleStrict
         if (!$reached) {
             $add(
                 'error',
-                sprintf('TV %s does not answer ping (%d attempts)', $host, self::PING_ATTEMPTS),
-                "Is it disconnected from mains, is 'Remote start' switched off on the TV, or is the IP address wrong?"
+                sprintf($this->Translate('TV %s does not answer ping (%d attempts)'), $host, self::PING_ATTEMPTS),
+                $this->Translate("Is it disconnected from mains, is 'Remote start' switched off on the TV, or is the IP address wrong?")
             );
             return $summary();
         }
 
         $status = $this->getResult($this->callRestApi('system', 'getPowerStatus', [], '1.0', [CURLE_OPERATION_TIMEDOUT], [self::HTTP_ERROR_NOT_FOUND]))[0]['status'] ?? null;
         if (!is_string($status)) {
-            $add('error', sprintf('TV %s answers ping, but not getPowerStatus', $host), 'Is the device at this address a Sony Bravia TV with IP control switched on?');
+            $add(
+                'error',
+                sprintf($this->Translate('TV %s answers ping, but not getPowerStatus'), $host),
+                $this->Translate('Is the device at this address a Sony Bravia TV with IP control switched on?')
+            );
             return $summary();
         }
-        $add('ok', sprintf('TV %s answers, power status: %s', $host, match ($status) {
-            'standby' => 'Standby',
-            'active'  => 'On',
+        $add('ok', sprintf($this->Translate('TV %s answers, power status: %s'), $host, match ($status) {
+            'standby' => $this->Translate('Standby'),
+            'active'  => $this->Translate('On'),
             default   => $status,
         }));
-        $add('info', 'Switching PowerStatus: 2 = On; 0 (Off / not reachable) and 1 (Standby) both put the TV into standby, it cannot be switched fully off over the network');
+        $add('info', $this->Translate('Switching PowerStatus: 2 = On; 0 (Off / not reachable) and 1 (Standby) both put the TV into standby, it cannot be switched fully off over the network'));
 
         // getPlayingContentInfo verlangt den Schlüssel; mit richtigem Schlüssel kommt ein Ergebnis, 40005 (Standby)
         // oder 7 (App im Vordergrund), mit falschem 403 (alles mitgeschnitten)
@@ -423,27 +435,27 @@ class SonyTV extends IPSModuleStrict
         ]);
         $answer = $response === false ? null : json_decode($response, true);
         if (!is_array($answer)) {
-            $add('warn', 'Pre-Shared Key could not be checked: no answer to getPlayingContentInfo');
+            $add('warn', $this->Translate('Pre-Shared Key could not be checked: no answer to getPlayingContentInfo'));
         } elseif (($answer['error'][0] ?? null) === self::SYSTEM_ERROR_FORBIDDEN) {
             $add(
                 'error',
-                'Pre-Shared Key rejected by the TV (error 403)',
-                "Enter the same key as on the TV under Network & Internet → Local network → IP control (authentication 'Pre-Shared Key')."
+                $this->Translate('Pre-Shared Key rejected by the TV (error 403)'),
+                $this->Translate("Enter the same key as on the TV under Network & Internet → Local network → IP control (authentication 'Pre-Shared Key').")
             );
         } else {
-            $add('ok', 'Pre-Shared Key accepted');
+            $add('ok', $this->Translate('Pre-Shared Key accepted'));
         }
 
         foreach ([
-            [self::VAR_IDENT_SEND_REMOTE_KEY, 'remote keys', 'UpdateRemoteKeyList'],
-            [self::VAR_IDENT_INPUT_SOURCE, 'input sources', 'GetSourceListInfo'],
-            [self::VAR_IDENT_APPLICATION, 'applications', 'UpdateApplicationList'],
-        ] as [$ident, $name, $action]) {
+            [self::VAR_IDENT_SEND_REMOTE_KEY, $this->Translate('%d remote keys read (options of the variable %s)'), 'UpdateRemoteKeyList'],
+            [self::VAR_IDENT_INPUT_SOURCE, $this->Translate('%d input sources read (options of the variable %s)'), 'GetSourceListInfo'],
+            [self::VAR_IDENT_APPLICATION, $this->Translate('%d applications read (options of the variable %s)'), 'UpdateApplicationList'],
+        ] as [$ident, $format, $action]) {
             $count = count($this->getListEntries($ident));
             $add(
                 $count === 0 ? 'warn' : 'ok',
-                sprintf('%d %s read (options of the variable %s)', $count, $name, $ident),
-                $count === 0 ? sprintf("Read the list with IPS_RequestAction(\$InstanceID, '%s', 0) while the TV is on or in standby.", $action) : ''
+                sprintf($format, $count, $ident),
+                $count === 0 ? sprintf($this->Translate('Read the list with IPS_RequestAction($InstanceID, \'%s\', 0) while the TV is on or in standby.'), $action) : ''
             );
         }
 
@@ -1634,10 +1646,10 @@ class SonyTV extends IPSModuleStrict
     private function getConfigurationErrorText(int $configurationError): string
     {
         return match ($configurationError) {
-            self::STATUS_INST_IP_IS_EMPTY   => 'IP address can not be empty.',
-            self::STATUS_INST_IP_IS_INVALID => sprintf("IP address '%s' is not valid (allowed: IPv4 or IPv6 address).", $this->ReadPropertyString(self::PROP_HOST)),
+            self::STATUS_INST_IP_IS_EMPTY   => $this->Translate('IP address can not be empty.'),
+            self::STATUS_INST_IP_IS_INVALID => sprintf($this->Translate("IP address '%s' is not valid (allowed: IPv4 or IPv6 address)."), $this->ReadPropertyString(self::PROP_HOST)),
             self::STATUS_INST_INTERVAL_IS_INVALID => sprintf(
-                'update interval %s is not valid (allowed: 0 or more seconds).',
+                $this->Translate('update interval %s is not valid (allowed: 0 or more seconds).'),
                 $this->ReadPropertyInteger(self::PROP_UPDATE_INTERVAL)
             ),
         };

@@ -45,7 +45,28 @@
             "Input Source": "Eingangsquelle",
             "Start Application": "Starte Applikation",
             "With 'Update remote key list' the keys of the remote control are read in again.": "Mit 'Tastenliste aktualisieren' werden die Tasten der Fernbedienung neu eingelesen.",
-            "Update remote key list": "Tastenliste aktualisieren"
+            "Update remote key list": "Tastenliste aktualisieren",
+            "%d errors, %d warnings": "%d Fehler, %d Warnungen",
+            "Configuration: %s": "Konfiguration: %s",
+            "Correct the setting and apply the changes.": "Einstellung korrigieren und die Änderungen übernehmen.",
+            "Configuration: host %s, update interval %s": "Konfiguration: Host %s, Aktualisierungsintervall %s",
+            "off (no automatic update)": "aus (keine automatische Aktualisierung)",
+            "TV %s does not answer ping (%d attempts)": "Fernseher %s antwortet nicht auf Ping (%d Versuche)",
+            "Is it disconnected from mains, is 'Remote start' switched off on the TV, or is the IP address wrong?": "Ist er vom Netz getrennt, 'Remote start' am Fernseher ausgeschaltet oder die IP-Adresse falsch?",
+            "TV %s answers ping, but not getPowerStatus": "Fernseher %s antwortet auf Ping, aber nicht auf getPowerStatus",
+            "Is the device at this address a Sony Bravia TV with IP control switched on?": "Ist das Gerät unter dieser Adresse ein Sony-Bravia-Fernseher mit eingeschaltetem 'IP control'?",
+            "TV %s answers, power status: %s": "Fernseher %s antwortet, Zustand: %s",
+            "Switching PowerStatus: 2 = On; 0 (Off / not reachable) and 1 (Standby) both put the TV into standby, it cannot be switched fully off over the network": "Schalten von PowerStatus: 2 = Eingeschaltet; 0 (Aus / nicht erreichbar) und 1 (Standby) schalten beide in den Standby, ganz ausschalten lässt sich der Fernseher über das Netzwerk nicht",
+            "Pre-Shared Key could not be checked: no answer to getPlayingContentInfo": "Pre-Shared Key nicht prüfbar: keine Antwort auf getPlayingContentInfo",
+            "Pre-Shared Key rejected by the TV (error 403)": "Pre-Shared Key vom Fernseher abgelehnt (Fehler 403)",
+            "Enter the same key as on the TV under Network & Internet → Local network → IP control (authentication 'Pre-Shared Key').": "Denselben Schlüssel eintragen wie am Fernseher unter Network & Internet → Local network → IP control (Authentifizierung 'Pre-Shared Key').",
+            "Pre-Shared Key accepted": "Pre-Shared Key angenommen",
+            "%d remote keys read (options of the variable %s)": "%d Fernbedienungstasten eingelesen (Optionen der Variable %s)",
+            "%d input sources read (options of the variable %s)": "%d Eingänge eingelesen (Optionen der Variable %s)",
+            "%d applications read (options of the variable %s)": "%d Apps eingelesen (Optionen der Variable %s)",
+            "Read the list with IPS_RequestAction($InstanceID, '%s', 0) while the TV is on or in standby.": "Liste mit IPS_RequestAction($InstanceID, '%s', 0) einlesen, während der Fernseher eingeschaltet oder im Standby ist.",
+            "update interval %s is not valid (allowed: 0 or more seconds).": "Aktualisierungsintervall %s ist nicht gültig (erlaubt: 0 oder mehr Sekunden).",
+            "IP address '%s' is not valid (allowed: IPv4 or IPv6 address).": "IP-Adresse '%s' ist nicht gültig (erlaubt: IPv4- oder IPv6-Adresse)."
         }
     }
 }

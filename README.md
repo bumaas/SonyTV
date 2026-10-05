@@ -138,7 +138,7 @@ STV_ReadApplicationList(int $InstanzID): string;  // installierte Apps als JSON-
 STV_RunSelfTest(int $InstanzID): string;          // Selbsttest als Text, schaltet nichts
 ```
 
-`STV_RunSelfTest` prüft Konfiguration, Erreichbarkeit, Pre-Shared Key und die drei Listen und liefert eine Zeile je Prüfung (✓ in Ordnung, ⚠ Warnung, ✗ Fehler, darunter mit → was zu tun ist) und zum Schluss `N errors, M warnings`. Dasselbe zeigt der Knopf *Selbsttest ausführen* im Formular.
+`STV_RunSelfTest` prüft Konfiguration, Erreichbarkeit, Pre-Shared Key und die drei Listen und liefert eine Zeile je Prüfung (✓ in Ordnung, ⚠ Warnung, ✗ Fehler, darunter mit → was zu tun ist) und zum Schluss `N Fehler, M Warnungen`, in der Sprache der Symcon-Installation. Dasselbe zeigt der Knopf *Selbsttest ausführen* im Formular.
 
 **Listen neu einlesen** – etwa nach der Installation einer neuen App; dasselbe tun die Knöpfe im Formular:
 
