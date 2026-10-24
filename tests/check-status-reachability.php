@@ -9,8 +9,8 @@ declare(strict_types=1);
  * hatte gar keinen Status.
  *
  * Falscher Schlüssel: mitgeschnitten ist die Antwort auf setPowerStatus und getPlayingContentInfo (wortgleich,
- * HTTP 403). Für getVolumeInformation steht hier derselbe Mitschnitt; dass der TV dort genauso antwortet, ist
- * eine Annahme. getPowerStatus antwortet auch mit falschem Schlüssel normal (Mitschnitt).
+ * HTTP 403). getPowerStatus und getVolumeInformation antworten auch mit falschem Schlüssel normal (Mitschnitte,
+ * Einzelheiten in check-psk-without-key.php).
  *
  * Aufruf: php tests/check-status-reachability.php
  */
@@ -62,19 +62,17 @@ $m      = konfigurierteInstanz('aktiv');
 pruefe($m->instanzStatus() === IS_ACTIVE, 'Ausgangslage: TV an, Instanz aktiv');
 
 $richtig                                         = $m->antworten;
-$m->antworten['audio/getVolumeInformation']      = $falsch;
 $m->antworten['avContent/getPlayingContentInfo'] = $falsch;
 $m->marke();
 $m->UpdateAll();
 pruefe($m->instanzStatus() === 203, 'Antwort 403: Status 203');
 pruefe(count(meldungenMit($m, 'Pre-Shared Key')) === 1, 'Wechsel nach 203 steht einmal im Log');
 
-// getPowerStatus antwortet auch mit falschem Schlüssel, das darf den Status nicht zurücksetzen
-$m->antworten['audio/getVolumeInformation'] = $richtig['audio/getVolumeInformation'];
+// getPowerStatus und getVolumeInformation antworten auch mit falschem Schlüssel, das darf den Status nicht zurücksetzen
 $m->marke();
 $m->RequestAction('UpdateAll', 0);
 pruefe(array_column($m->anfragen, 'method')[0] === 'getPowerStatus', 'UpdateAll fragt zuerst getPowerStatus ab');
-pruefe($m->instanzStatus() === 203, 'getPowerStatus und getPlayingContentInfo (weiter 403): Status bleibt 203');
+pruefe($m->instanzStatus() === 203, 'getPowerStatus, getVolumeInformation und getPlayingContentInfo (weiter 403): Status bleibt 203');
 
 // ein geschützter Aufruf gelingt: Schlüssel stimmt wieder
 $m->antworten = $richtig;

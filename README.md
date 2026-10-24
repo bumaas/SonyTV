@@ -48,6 +48,7 @@ Sonys eigene Beschreibung: [Remote Display Control](https://pro-bravia.sony.net/
 | `Host` (IP address of Sony TV) | | IP-Adresse des Fernsehers |
 | `PSK` (Pre-Shared Key) | `0000` | derselbe Schlüssel wie am Fernseher |
 | `UpdateInterval` (Update Interval) | 10 | Abfrageintervall in Sekunden, 0 = keine automatische Abfrage |
+| `ShowPictureSettings` (Create variables for the picture settings) | aus | legt je Bildeinstellung des Fernsehers eine Variable an, siehe [Statusvariablen](#3-statusvariablen) |
 
 Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 
@@ -71,7 +72,7 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 | IP-Adresse ist nicht gültig | `Host` ist keine IP-Adresse | IP-Adresse statt Hostnamen eintragen |
 | Das Aktualisierungsintervall darf nicht negativ sein | `UpdateInterval` ist kleiner als 0 | 0 (keine Aktualisierung) oder eine Zahl von Sekunden eintragen |
 
-Beide Fehler stehen beim Wechsel einmal im Log von Symcon, ebenso ihre Behebung (`TV … answers again.`, `Pre-Shared Key accepted …`). Der Status „Pre-Shared Key abgelehnt" bleibt stehen, bis ein Befehl mit Schlüssel gelingt – die Abfrage des Ein/Aus-Zustands beantwortet der Fernseher auch ohne gültigen Schlüssel und sagt darüber nichts.
+Beide Fehler stehen beim Wechsel einmal im Log von Symcon, ebenso ihre Behebung (`TV … answers again.`, `Pre-Shared Key accepted …`). Der Status „Pre-Shared Key abgelehnt" bleibt stehen, bis ein Befehl mit Schlüssel gelingt – Ein/Aus-Zustand, Lautstärke, Eingänge, Fernbedienungstasten und Bildeinstellungen meldet der Fernseher auch ohne gültigen Schlüssel, ihre Abfrage sagt darüber also nichts.
 
 Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualisierung, und Schaltbefehle werden abgewiesen. Im Log von Symcon steht der Fehler zusätzlich mit dem eingetragenen Wert, z. B. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 
@@ -88,6 +89,10 @@ Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualis
 | Starte Applikation | `Application` | Aufzählung | Auswahl startet die App |
 
 Die Auswahllisten für Tasten, Eingänge und Apps kommen vom Fernseher selbst und stehen direkt an der jeweiligen Variable – bei mehreren Fernsehern also je Gerät getrennt und ohne Begrenzung der Anzahl. Jeder Eintrag hat eine feste Nummer als Wert. Sie bleibt ihm erhalten, auch wenn später Apps hinzukommen oder entfallen; -1 steht für „keine Auswahl“.
+
+**Bildeinstellungen.** Mit dem Schalter `ShowPictureSettings` legt die Instanz für jede Bildeinstellung, die der Fernseher meldet, eine Variable an, beim KD-75XE9405 sind es 13. Der Ident ist `Picture` plus der Name beim Fernseher, also `PictureSharpness`, `PictureBrightness` oder `PictureColorTemperature`. Einstellungen mit Zahlenbereich (Helligkeit, Kontrast, Farbe, Farbton, Schärfe) werden Schieberegler mit den Grenzen des Fernsehers, die übrigen Aufzählungen. Deren Wert ist der Text des Fernsehers, z. B. `warm` oder `medium`, und so schaltet man sie auch: `RequestAction(IPS_GetObjectIDByIdent('PictureColorTemperature', $tv), 'warm')`.
+
+Die Werte gelten für den Eingang und den Bildmodus, die gerade laufen. Wechselt der Eingang, zeigen die Variablen mit der nächsten Aktualisierung dessen Werte. Gelesen und geändert werden sie nur bei eingeschaltetem Fernseher, die Variablen erscheinen deshalb erst, wenn er das erste Mal eingeschaltet war. Meldet der Fernseher eine Einstellung als nicht verfügbar, hat die Variable keine Aktion. Am KD-75XE9405 betraf das an einem HDMI-Eingang den Bildmodus, den Auto-Bildmodus, den HDR-Modus und den Lichtsensor. Schaltet man den Schalter wieder aus, verschwinden die Variablen.
 
 Die Variablen zeigen einen Eingang, eine App oder eine Taste erst, wenn der Fernseher den Befehl angenommen hat. Läuft keiner der Eingänge aus der Liste, steht *Eingangsquelle* auf „-“. *Aus / nicht erreichbar* heißt: Der Fernseher antwortet nicht im Netzwerk.
 
@@ -169,9 +174,10 @@ $Antwort = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri"
 - **Ganz ausgeschaltet ist nicht Standby.** Ist der Fernseher vom Strom getrennt oder hat er das Netzwerk im Standby abgeschaltet, kann das Modul ihn nicht einschalten und meldet *Aus / nicht erreichbar*.
 - **Nur die physischen Eingänge.** *Eingangsquelle* kennt HDMI-, AV- und Component-Eingänge. Über HDMI-CEC angemeldete Geräte, der eingebaute Tuner und die Bildschirmspiegelung stehen nicht in der Liste; läuft etwas anderes als einer dieser Eingänge, zeigt die Variable „-“.
 - **Apps kennt das Modul nur, wenn es sie selbst gestartet hat.** Der Fernseher verrät nicht, welche App gerade läuft. *Starte Applikation* zeigt deshalb die zuletzt über Symcon gestartete App und geht auf „-“, sobald wieder ein Eingang oder ein Sender läuft. Eine mit der Fernbedienung gestartete App erscheint nicht; *Eingangsquelle* steht dann auf „-“.
+- **Bildeinstellungen nur mit Namen, die das Modul kennt.** Die Namen der Einstellungen und Werte sind die des KD-75XE9405. Meldet ein anderes Modell weitere, erscheinen sie mit dem Namen, den der Fernseher liefert (z. B. `motionflow`). Bereiche und Werte kommen immer vom Fernseher selbst.
 - **Nach dem Einschalten dauert es.** Während der Fernseher startet, meldet er sich bereits als eingeschaltet, obwohl er noch nicht bedienbar ist. Das Modul wartet deshalb bis zu 90 Sekunden, bevor es *Eingeschaltet* setzt.
 - **Aussetzer werden abgefangen.** Antwortet ein eingeschalteter Fernseher oder einer im Standby nicht mehr, prüft das Modul die Verbindung dreimal mit je einer Sekunde, bevor es *Aus / nicht erreichbar* meldet. Ein einzelner Aussetzer der Schnittstelle ändert den Status nicht, erst der zweite in Folge. Als Aussetzer zählt auch eine Fehlerantwort wie `404 Not Found`.
-- **Ein falscher Pre-Shared Key fällt erst beim ersten Befehl mit Schlüssel auf.** Seinen Ein/Aus-Zustand meldet der Fernseher auch ohne gültigen Schlüssel. Im Standby fragt das Modul nur diesen ab; dann zeigt sich der Fehler erst beim Einlesen der Listen oder beim ersten Schaltbefehl.
+- **Ein falscher Pre-Shared Key fällt erst beim ersten Befehl mit Schlüssel auf.** Seinen Ein/Aus-Zustand, die Eingänge und die Fernbedienungstasten meldet der Fernseher auch ohne gültigen Schlüssel. Im Standby fragt das Modul nur den Zustand ab; dann zeigt sich der Fehler erst beim Einlesen der App-Liste oder beim ersten Schaltbefehl.
 
 ## 7. Begriffe
 

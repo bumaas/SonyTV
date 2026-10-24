@@ -40,8 +40,13 @@ Symcon-Modulbibliothek zur Steuerung von Sony-Bravia-Fernsehern über deren REST
 - Im Standby antwortet der TV auf `getPowerStatus`, `getRemoteControllerInfo`,
   `getCurrentExternalInputsStatus` und `getApplicationList`; Audio- und Content-Abfragen enden mit
   `40005 Display Is Turned off`.
-- **Falscher PSK:** `getPowerStatus` antwortet trotzdem (HTTP 200). Alles andere endet mit HTTP 403 und
-  `[403, "Forbidden"]` samt `auth_url`, `/sony/IRCC` mit HTTP 403 und leerem Inhalt.
+- **Falscher PSK:** Was Sonys Referenz mit Authentifizierungsstufe „none“ führt, antwortet trotzdem normal (HTTP
+  200): `getPowerStatus`, `getVolumeInformation`, `getCurrentExternalInputsStatus`, `getRemoteControllerInfo`,
+  `getPictureQualitySettings` (Mitschnitte 29.09. und 24.10.2026, `METHODS_WITHOUT_KEY`). Die Stufen „private“
+  und „generic“ enden mit HTTP 403 und `[403, "Forbidden"]` samt `auth_url` (mitgeschnitten für
+  `getPlayingContentInfo`, `getApplicationList`, `getSystemInformation`, `setPowerStatus`), `/sony/IRCC` mit HTTP
+  403 und leerem Inhalt. Bis 2.3 build 47 galt nur `getPowerStatus` als schlüsselfrei; dann wechselte der Status
+  bei falschem Schlüssel in jedem Zyklus zwischen 203 und 102 (`tests/check-psk-without-key.php`).
 - **Was `getPlayingContentInfo` meldet** (Mitschnitte 29.09.2026): bei einem HDMI-Eingang dessen `uri`
   (`extInput:hdmi?port=3`), beim Tuner `tv:dvbt?trip=…` mit Sendername, bei Bildschirmspiegelung
   `extInput:widi?port=1`, **bei einer App im Vordergrund dauerhaft `[7, "Illegal State"]`**. Welche App läuft,
@@ -55,6 +60,22 @@ Symcon-Modulbibliothek zur Steuerung von Sony-Bravia-Fernsehern über deren REST
   wieder eine Antwort) ändert nichts; `UpdateAll` liefert dann `false` für „Zustand unbekannt". Eine
   Fehlerantwort zählt wie keine Antwort: `executeRestApiRequestWithRetry()` wiederholt nach 3 s (am 01.10.2026
   kam `{"error":[404,"Not Found"]}`, Fixture `fehler-404`).
+
+## Bildeinstellungen
+
+Mit `ShowPictureSettings` (Vorgabe aus, seit 2.3) liest das Modul bei eingeschaltetem TV in `ApplyChanges` und
+`UpdateAll` `video.getPictureQualitySettings` mit `[{"target":""}]` und legt je Ziel eine Variable an, Ident
+`Picture` + Ziel mit großem Anfangsbuchstaben (`PictureSharpness`, `PicturePictureMode`). Eine Liste nicht leerer
+`value` ergibt String mit Aufzählung, deren Optionswert der Text des TV ist (`warm`, `sRgb/bt709`); sonst ergibt
+ein ganzzahliges `min`/`max`/`step` mit `max` > `min` Integer mit Schieberegler. Laut Referenz sind die drei
+Kommazahlen, bei Wertelisten -1, und ein Bereich darf `value: ""` tragen; der KD-75XE9405 lässt sie bei Listen weg.
+Nicht ganzzahlige Bereiche überspringt das Modul (Debug „Unexpected picture setting“). Gesetzt wird mit `setPictureQualitySettings`
+`[{"settings":[{"target":…,"value":"<String>"}]}]`, Antwort `{"result":[]}`. Ziele und Bereiche stehen ohne Wert im
+Attribut `PictureSettings`; die Variablen werden nur neu registriert, wenn sich dort etwas ändert. `isAvailable:
+false` heißt keine Aktion (`DisableAction`), ein nicht mehr gemeldetes Ziel behält seine Variable ohne Aktion. Namen
+für Ziele und Werte stehen in `PICTURE_TARGET_NAMES`/`PICTURE_VALUE_NAMES` (Stand KD-75XE9405), Unbekanntes erscheint
+roh. Ein Wert außerhalb des Bereichs (Schärfe 500) beantwortet der TV mit `[3, "Illegal Argument"]` und übernimmt
+nichts (24.10.2026, nur im Log gesehen, nicht als Fixture). `tests/check-picture-settings.php` hält das fest.
 
 ## Protokoll
 
@@ -95,9 +116,9 @@ schreibt jeden Wechsel einmal ins Log (Fehler als `Logger_Err`, Behebung als `Lo
 **201** TV antwortet nicht (`PowerStatus` = Aus; geht vor), **203** Pre-Shared Key abgelehnt, sonst 102.
 104 bleibt nur für „Zustand unbekannt" in `ApplyChanges`. `noteAuthentication()` in `SendCurlPost()` wertet
 jede Antwort **vor** dem Filter der ignorierten Fehler aus (`getPlayingContentInfo` ignoriert 403): HTTP 403
-oder Fehler 403 setzt `pskRejected`, jede andere Antwort ohne HTTP-Fehler löscht ihn — außer auf
-`getPowerStatus`, das auch mit falschem Schlüssel antwortet. Annahme dahinter: Alle anderen Methoden
-verlangen den Schlüssel (belegt nur für `setPowerStatus`, `getPlayingContentInfo` und IRCC).
+oder Fehler 403 setzt `pskRejected`, jede andere Antwort ohne HTTP-Fehler löscht ihn, außer auf die Methoden
+in `METHODS_WITHOUT_KEY`, die auch mit falschem Schlüssel antworten (siehe „Falscher PSK“). Neue Abfragen vorher
+in Sonys Referenz auf die Authentifizierungsstufe prüfen und bei „none“ dort eintragen.
 
 ## Prüfen und Ausrollen
 
@@ -164,11 +185,14 @@ unlesbares Diagramm gilt als „in Benutzung"**, dann wird nichts gelöscht.
   nennt Status 203, ein unsichtbarer Hinweis die Parameter der `STV_`-Funktionen. Nicht im Modul lösbar:
   `trigger_error` hängt „in …\module.php on line N" an jede Meldung (PHP-Fehlerausgabe, bei HomeAssistant genauso).
 - **Mitschnitte fehlen** für das Hochfahren nach „ganz aus", für einen angeschlossenen Kopfhörer und für die
-  Antwort auf `setActiveApp`.
+  Antwort auf `setActiveApp`; bei den Bildeinstellungen für die Antwort im Standby, mit einer App im Vordergrund
+  und an einem Eingang mit HDR. Das Modul fragt sie nur bei eingeschaltetem TV ab und behandelt 7 und 40005 als
+  stille Fehler, beides ohne Mitschnitt.
+- Warum der TV am HDMI-Eingang `pictureMode`, `autoPictureMode`, `hdrMode` und `lightSensor` mit `isAvailable:
+  false` meldet (`pictureMode` dazu mit leerem Wert), ist ungeklärt. Ob sie trotzdem setzbar wären, ist nicht
+  geprüft; das Modul bietet sie dann nicht zum Schalten an.
 - Der Kopfhörer-Eintrag von `getVolumeInformation` schreibt ebenfalls `AudioMute` und kann den Wert des
   Lautsprechers überschreiben. Ohne Mitschnitt mit angeschlossenem Kopfhörer nicht prüfbar, deshalb unverändert.
-- Ob `getRemoteControllerInfo`, `getApplicationList` und die übrigen Abfragen im Standby den Schlüssel
-  verlangen, ist nicht mitgeschnitten. Falls nicht, löschen sie einen gesetzten Status 203 zu früh.
 - Das Modul sendet Tasten an `/sony/IRCC`, was der KD-75XE9405 annimmt. Seine Gerätebeschreibung (`dd.xml`)
   nennt als `controlURL` aber `/sony/ircc` (klein), und manche Modelle sollen nur das annehmen. Ob die
   Kleinschreibung überall geht, ist ungeprüft.

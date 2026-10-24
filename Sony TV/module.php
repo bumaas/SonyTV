@@ -41,12 +41,68 @@ trait SonyConstants
     private const string PROP_HOST            = 'Host';
     private const string PROP_PSK             = 'PSK';
     private const string PROP_UPDATE_INTERVAL = 'UpdateInterval';
+    private const string PROP_PICTURE_SETTINGS = 'ShowPictureSettings';
 
     private const string ATTR_REMOTECONTROLLERINFO = 'RemoteControllerInfo';
     private const string ATTR_SOURCELIST           = 'SourceList';
     private const string ATTR_APPLICATIONLIST      = 'ApplicationList';
     // feste Variablenwerte je Listeneintrag: {Ident: {Schlüssel: Wert}}, wird nie kleiner
     private const string ATTR_LISTVALUES = 'ListValues';
+    // zuletzt gemeldete Bildeinstellungen ohne Wert: {Ident: {target, min, max, step} oder {target, values}, available}
+    private const string ATTR_PICTURE_SETTINGS = 'PictureSettings';
+
+    // Variablenident einer Bildeinstellung: Präfix + Ziel des TV mit großem Anfangsbuchstaben (PictureSharpness)
+    private const string VAR_IDENT_PICTURE_PREFIX = 'Picture';
+    private const int    PICTURE_POSITION         = 100;
+
+    // Namen der am KD-75XE9405 gemeldeten Ziele und Werte (24.10.2026); Unbekanntes erscheint so, wie der TV es meldet
+    private const array PICTURE_TARGET_NAMES = [
+        'autoLocalDimming'    => 'Auto Local Dimming',
+        'autoPictureMode'     => 'Auto Picture Mode',
+        'brightness'          => 'Brightness',
+        'color'               => 'Color',
+        'colorSpace'          => 'Color Space',
+        'colorTemperature'    => 'Color Temperature',
+        'contrast'            => 'Contrast',
+        'hdrMode'             => 'HDR Mode',
+        'hue'                 => 'Hue',
+        'lightSensor'         => 'Light Sensor',
+        'pictureMode'         => 'Picture Mode',
+        'sharpness'           => 'Sharpness',
+        'xtendedDynamicRange' => 'X-tended Dynamic Range',
+    ];
+    private const array PICTURE_VALUE_NAMES = [
+        'high'          => 'High',
+        'medium'        => 'Medium',
+        'low'           => 'Low',
+        'off'           => 'Disabled',
+        'on'            => 'Enabled',
+        'auto'          => 'Auto',
+        'auto24p'       => 'Auto (24p Sync)',
+        'cool'          => 'Cool',
+        'neutral'       => 'Neutral',
+        'warm'          => 'Warm',
+        'expert1'       => 'Expert 1',
+        'expert2'       => 'Expert 2',
+        'sRgb/bt709'    => 'sRGB/BT.709',
+        'dci'           => 'DCI',
+        'adobeRgb'      => 'Adobe RGB',
+        'bt2020'        => 'BT.2020',
+        'hdr10'         => 'HDR10',
+        'hlg'           => 'HLG',
+        'vivid'         => 'Vivid',
+        'standard'      => 'Standard',
+        'custom'        => 'Custom',
+        'cinemaPro'     => 'Cinema Pro',
+        'cinemaHome'    => 'Cinema Home',
+        'sports'        => 'Sports',
+        'animation'     => 'Animation',
+        'photoVivid'    => 'Photo-Vivid',
+        'photoStandard' => 'Photo-Standard',
+        'photoCustom'   => 'Photo-Custom',
+        'game'          => 'Game',
+        'graphics'      => 'Graphics',
+    ];
 
     private const string VAR_IDENT_INPUT_SOURCE     = 'InputSource';
     private const string VAR_IDENT_POWER_STATUS     = 'PowerStatus';
@@ -73,6 +129,12 @@ trait SonyConstants
     private const int HTTP_ERROR_NOT_FOUND       = 404;
 
     private const int NO_SELECTION = -1;
+
+    // Authentifizierungsstufe „none“ in Sonys Referenz; am KD-75XE9405 antworten sie auch mit falschem Schlüssel
+    // (Mitschnitte 29.09. und 24.10.2026). Ihre Antwort sagt deshalb nichts darüber, ob der Schlüssel stimmt.
+    private const array METHODS_WITHOUT_KEY = [
+        'getPowerStatus', 'getVolumeInformation', 'getCurrentExternalInputsStatus', 'getRemoteControllerInfo', 'getPictureQualitySettings',
+    ];
 
     // Variablenprofile bis 2.1 build 27, seitdem Darstellungen je Variable; werden gelöscht, sobald unbenutzt
     private const array LEGACY_PROFILES = ['STV.Applications', 'STV.PowerStatus', 'STV.Volume', 'STV.RemoteKey', 'STV.Sources'];
@@ -116,6 +178,7 @@ class SonyTV extends IPSModuleStrict
         parent::ApplyChanges();
 
         $this->RegisterVariables();
+        $this->registerPictureVariables();
         $this->SetSummary($this->ReadPropertyString(self::PROP_HOST));
 
         $configurationError = $this->getConfigurationError();
@@ -148,6 +211,9 @@ class SonyTV extends IPSModuleStrict
             $this->UpdateRemoteKeyList();
             $this->GetSourceListInfo();
             $this->UpdateApplicationList();
+        }
+        if ($powerStatus === self::STATUS_ACTIVE) {
+            $this->updatePictureSettings();
         }
     }
 
@@ -232,9 +298,57 @@ class SonyTV extends IPSModuleStrict
                 return fn (): bool => $this->runWithVisualFeedback(fn (): bool => $this->WriteAPIInformationToFile(''), 'Error writing the file.');
 
             default:
+                $setting = $this->getPictureSettings()[$ident] ?? null;
+                if ($setting !== null) {
+                    return $this->getPictureCommand($ident, $setting, $value);
+                }
                 trigger_error('Unexpected ident: ' . $ident, E_USER_WARNING);
                 return null;
         }
+    }
+
+    /**
+     * Befehl für eine Bildeinstellung: Bereiche nehmen eine Ganzzahl im Raster des TV, Wertelisten einen der Werte.
+     *
+     * @throws \JsonException
+     */
+    private function getPictureCommand(string $ident, array $setting, mixed $value): ?callable
+    {
+        if (!$setting['available']) {
+            trigger_error(sprintf('"%s" is not available on the TV at the moment (it depends on the current input and picture mode)', $ident), E_USER_WARNING);
+            return null;
+        }
+
+        if (isset($setting['values'])) {
+            if (!is_string($value) || !in_array($value, $setting['values'], true)) {
+                $this->rejectValue($ident, $value, implode(', ', $setting['values']));
+                return null;
+            }
+            $sendValue = $value;
+        } else {
+            $number = $this->toInteger($value);
+            if ($number === null || $number < $setting['min'] || $number > $setting['max'] || ($number - $setting['min']) % $setting['step'] !== 0) {
+                $this->rejectValue($ident, $value, $setting['min'] . ' to ' . $setting['max'] . ($setting['step'] > 1 ? ' in steps of ' . $setting['step'] : ''));
+                return null;
+            }
+            $value     = $number;
+            $sendValue = (string)$number;
+        }
+
+        // im Standby lehnt der TV die Bildbefehle ab (24.10.2026)
+        if ($this->GetValue(self::VAR_IDENT_POWER_STATUS) !== self::STATUS_ACTIVE) {
+            trigger_error(sprintf('"%s" can be changed only while the TV is on', $ident), E_USER_WARNING);
+            return null;
+        }
+
+        return function () use ($ident, $setting, $value, $sendValue): bool {
+            $response = $this->callRestApi('video', 'setPictureQualitySettings', [['settings' => [['target' => $setting['target'], 'value' => $sendValue]]]], '1.0', [], []);
+            if ($this->getResult($response) === null) {
+                return false;
+            }
+            $this->SetValue($ident, $value);
+            return true;
+        };
     }
 
     /**
@@ -346,6 +460,7 @@ class SonyTV extends IPSModuleStrict
         if ($PowerStatus === self::STATUS_ACTIVE) {
             $this->getVolumes();
             $this->GetInputSource();
+            $this->updatePictureSettings();
         }
 
         return true;
@@ -456,6 +571,15 @@ class SonyTV extends IPSModuleStrict
                 $count === 0 ? 'warn' : 'ok',
                 sprintf($format, $count, $ident),
                 $count === 0 ? sprintf($this->Translate('Read the list with IPS_RequestAction($InstanceID, \'%s\', 0) while the TV is on or in standby.'), $action) : ''
+            );
+        }
+
+        if ($this->ReadPropertyBoolean(self::PROP_PICTURE_SETTINGS)) {
+            $count = count($this->getPictureSettings());
+            $add(
+                $count === 0 ? 'warn' : 'ok',
+                sprintf($this->Translate('%d picture settings read (variables Picture…)'), $count),
+                $count === 0 ? $this->Translate('The TV reports them only while it is on; they are read with the next update.') : ''
             );
         }
 
@@ -1200,7 +1324,7 @@ class SonyTV extends IPSModuleStrict
 
         if (!$rejected) {
             $request = json_decode($data, true);
-            if ($httpCode >= 400 || (is_array($request) && ($request['method'] ?? '') === 'getPowerStatus')) {
+            if ($httpCode >= 400 || (is_array($request) && in_array($request['method'] ?? '', self::METHODS_WITHOUT_KEY, true))) {
                 return;
             }
         }
@@ -1523,6 +1647,7 @@ class SonyTV extends IPSModuleStrict
         $this->RegisterPropertyString(self::PROP_HOST, '');
         $this->RegisterPropertyString(self::PROP_PSK, '0000');
         $this->RegisterPropertyInteger(self::PROP_UPDATE_INTERVAL, 10);
+        $this->RegisterPropertyBoolean(self::PROP_PICTURE_SETTINGS, false);
 
         $this->RegisterPropertyBoolean('WriteLogInformationToIPSLogger', false);
         $this->RegisterPropertyBoolean('WriteDebugInformationToLogfile', false);
@@ -1535,6 +1660,7 @@ class SonyTV extends IPSModuleStrict
         $this->RegisterAttributeString(self::ATTR_SOURCELIST, json_encode([], JSON_THROW_ON_ERROR));
         $this->RegisterAttributeString(self::ATTR_APPLICATIONLIST, json_encode([], JSON_THROW_ON_ERROR));
         $this->RegisterAttributeString(self::ATTR_LISTVALUES, '{}');
+        $this->RegisterAttributeString(self::ATTR_PICTURE_SETTINGS, '{}');
     }
 
     /**
@@ -1610,10 +1736,156 @@ class SonyTV extends IPSModuleStrict
     }
 
     /**
+     * Die zuletzt gemeldeten Bildeinstellungen je Variablenident; leer, solange der Schalter im Formular aus ist.
+     */
+    private function getPictureSettings(): array
+    {
+        if (!$this->ReadPropertyBoolean(self::PROP_PICTURE_SETTINGS)) {
+            return [];
+        }
+        return $this->readListAttribute(self::ATTR_PICTURE_SETTINGS);
+    }
+
+    /**
+     * Liest die Bildeinstellungen des laufenden Eingangs und Bildmodus und schreibt sie in die Variablen.
+     * Ziele und Wertebereiche kommen aus der Antwort (candidate), andere Modelle melden andere.
+     *
+     * @throws \JsonException
+     */
+    private function updatePictureSettings(): bool
+    {
+        if (!$this->ReadPropertyBoolean(self::PROP_PICTURE_SETTINGS)) {
+            return true;
+        }
+
+        // 7 und 40005 melden die übrigen Abfragen bei einer App im Vordergrund bzw. dunklem Bildschirm;
+        // ob getPictureQualitySettings sie auch meldet, ist nicht mitgeschnitten
+        $response = $this->callRestApi('video', 'getPictureQualitySettings', [['target' => '']], '1.0', [], [
+            self::SYSTEM_ERROR_ILLEGAL_STATE, self::SYSTEM_ERROR_DISPLAY_OFF
+        ]);
+        $result = $this->getResult($response);
+        if (!is_array($result[0] ?? null)) {
+            return false;
+        }
+
+        // ein Ziel, das der TV nicht mehr meldet, behält seine Variable, ist aber nicht schaltbar
+        $known    = $this->readListAttribute(self::ATTR_PICTURE_SETTINGS);
+        $settings = array_map(static fn (array $setting): array => array_merge($setting, ['available' => false]), $known);
+        $values   = [];
+        foreach ($result[0] as $entry) {
+            $setting = is_array($entry) ? $this->parsePictureSetting($entry) : null;
+            if ($setting === null) {
+                $this->Logger_Dbg(__FUNCTION__, 'Unexpected picture setting: ' . json_encode($entry, JSON_THROW_ON_ERROR));
+                continue;
+            }
+            $ident            = self::VAR_IDENT_PICTURE_PREFIX . ucfirst((string)preg_replace('/[^A-Za-z0-9]/', '', $setting['target']));
+            $settings[$ident] = $setting;
+
+            $current = $entry['currentValue'] ?? null;
+            if (isset($setting['values']) && is_string($current)) {
+                $values[$ident] = $current;
+            } elseif (!isset($setting['values']) && is_numeric($current)) {
+                $values[$ident] = (int)$current;
+            }
+        }
+
+        if ($settings !== $known) {
+            $this->WriteAttributeString(self::ATTR_PICTURE_SETTINGS, json_encode($settings, JSON_THROW_ON_ERROR));
+            $this->registerPictureVariables();
+        }
+
+        foreach ($values as $ident => $value) {
+            $this->SetValue($ident, $value);
+        }
+
+        return true;
+    }
+
+    /**
+     * Ein Ziel aus getPictureQualitySettings: Werteliste ({value} je Eintrag) oder ganzzahliger Bereich ({min, max, step}).
+     * Laut Sonys Referenz stehen min/max/step bei Wertelisten auf -1, und ein Bereich darf value "" tragen.
+     *
+     * @return array|null null, wenn das Ziel keinen dieser beiden Kandidaten hat oder der Bereich nicht ganzzahlig ist
+     */
+    private function parsePictureSetting(array $entry): ?array
+    {
+        $target    = $entry['target'] ?? null;
+        $candidate = $entry['candidate'] ?? null;
+        if (!is_string($target) || $target === '' || !is_array($candidate) || !is_array($candidate[0] ?? null)) {
+            return null;
+        }
+        $available = ($entry['isAvailable'] ?? false) === true;
+
+        $values = array_values(array_filter(array_column($candidate, 'value'), static fn ($value): bool => is_string($value) && $value !== ''));
+        if ($values !== []) {
+            return ['target' => $target, 'values' => $values, 'available' => $available];
+        }
+
+        $range = [$candidate[0]['min'] ?? null, $candidate[0]['max'] ?? null, $candidate[0]['step'] ?? 1];
+        foreach ($range as $number) {
+            // Kommazahlen kämen als Integer-Variable verfälscht an
+            if (!is_numeric($number) || (float)$number !== floor((float)$number)) {
+                return null;
+            }
+        }
+        [$min, $max, $step] = array_map('intval', $range);
+        if ($max <= $min || $step < 1) {
+            return null;
+        }
+        return ['target' => $target, 'min' => $min, 'max' => $max, 'step' => $step, 'available' => $available];
+    }
+
+    /**
+     * Legt je gemeldeter Bildeinstellung eine Variable an (Schalter an) oder entfernt sie (Schalter aus).
+     * Bereiche werden Schieberegler, Wertelisten Aufzählungen mit dem Wert des TV als Variablenwert.
+     *
+     * @throws \JsonException
+     */
+    private function registerPictureVariables(): void
+    {
+        $settings = $this->readListAttribute(self::ATTR_PICTURE_SETTINGS);
+
+        if (!$this->ReadPropertyBoolean(self::PROP_PICTURE_SETTINGS)) {
+            foreach (array_keys($settings) as $ident) {
+                $this->UnregisterVariable($ident);
+            }
+            return;
+        }
+
+        $position = self::PICTURE_POSITION;
+        foreach ($settings as $ident => $setting) {
+            $name = $this->Translate(self::PICTURE_TARGET_NAMES[$setting['target']] ?? $setting['target']);
+            if (isset($setting['values'])) {
+                $options = [];
+                foreach ($setting['values'] as $value) {
+                    $options[] = $this->enumerationOption($value, $this->Translate(self::PICTURE_VALUE_NAMES[$value] ?? $value));
+                }
+                $this->RegisterVariableString($ident, $name, [
+                    'PRESENTATION' => VARIABLE_PRESENTATION_ENUMERATION,
+                    'OPTIONS'      => json_encode($options, JSON_THROW_ON_ERROR),
+                ], $position++);
+            } else {
+                $this->RegisterVariableInteger($ident, $name, [
+                    'PRESENTATION' => VARIABLE_PRESENTATION_SLIDER,
+                    'MIN'          => $setting['min'],
+                    'MAX'          => $setting['max'],
+                    'STEP_SIZE'    => $setting['step'],
+                ], $position++);
+            }
+
+            if ($setting['available']) {
+                $this->EnableAction($ident);
+            } else {
+                $this->DisableAction($ident);
+            }
+        }
+    }
+
+    /**
      * Option einer Aufzählung mit allen Feldern der Doku. Ohne IconActive meldet der Bearbeiten-Dialog
      * der Variable „Ungültiges Formular“; Color -1 ist die Vorgabe des Dialogs für „keine Farbe“.
      */
-    private function enumerationOption(int $value, string $caption): array
+    private function enumerationOption(int|string $value, string $caption): array
     {
         return ['Value' => $value, 'Caption' => $caption, 'IconActive' => false, 'IconValue' => '', 'Color' => -1];
     }

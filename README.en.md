@@ -48,6 +48,7 @@ Sony's own description: [Remote Display Control](https://pro-bravia.sony.net/rem
 | `Host` (IP address of Sony TV) | | IP address of the TV |
 | `PSK` (Pre-Shared Key) | `0000` | the same key as on the TV |
 | `UpdateInterval` (Update Interval) | 10 | polling interval in seconds, 0 = no automatic polling |
+| `ShowPictureSettings` (Create variables for the picture settings) | off | creates one variable per picture setting of the TV, see [Status variables](#3-status-variables) |
 
 Under *Expert Parameters* there are three switches for logging:
 
@@ -71,7 +72,7 @@ Under *Expert Parameters* there are three switches for logging:
 | IP address is not valid | `Host` is not an IP address | enter an IP address instead of a host name |
 | Update interval must not be negative | `UpdateInterval` is less than 0 | enter 0 (no update) or a number of seconds |
 
-Both errors are written once to the Symcon log when they occur, and so is their recovery (`TV … answers again.`, `Pre-Shared Key accepted …`). The state "Pre-Shared Key rejected" stays until a command that needs the key succeeds – the TV answers the query for its power state even without a valid key and tells nothing about it.
+Both errors are written once to the Symcon log when they occur, and so is their recovery (`TV … answers again.`, `Pre-Shared Key accepted …`). The state "Pre-Shared Key rejected" stays until a command that needs the key succeeds – the TV reports its power state, volume, inputs, remote keys and picture settings even without a valid key, so these queries tell nothing about it.
 
 With any of the three configuration errors (IP address, interval) no update runs and switching commands are rejected. The Symcon log additionally shows the error with the value entered, e.g. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 
@@ -88,6 +89,10 @@ With any of the three configuration errors (IP address, interval) no update runs
 | Start Application | `Application` | Enumeration | selecting starts the app |
 
 The selection lists for keys, inputs and apps come from the TV itself and are stored directly at the respective variable – separately for each TV if there are several, and without a limit on their number. Every entry has a fixed number as its value. It keeps that number even if apps are added or removed later; -1 means "no selection".
+
+**Picture settings.** With the switch `ShowPictureSettings` the instance creates one variable for every picture setting the TV reports; the KD-75XE9405 reports 13. The ident is `Picture` plus the name used by the TV, e.g. `PictureSharpness`, `PictureBrightness` or `PictureColorTemperature`. Settings with a numeric range (brightness, contrast, colour, hue, sharpness) become sliders with the limits of the TV, the others enumerations. Their value is the text of the TV, e.g. `warm` or `medium`, and that is also how they are switched: `RequestAction(IPS_GetObjectIDByIdent('PictureColorTemperature', $tv), 'warm')`.
+
+The values apply to the input and picture mode currently playing. When the input changes, the variables show its values with the next update. They are read and changed only while the TV is on, so the variables appear once the TV has been switched on for the first time. If the TV reports a setting as not available, its variable has no action. On the KD-75XE9405 at an HDMI input this applied to the picture mode, auto picture mode, HDR mode and light sensor. Switching the option off again removes the variables.
 
 The variables show an input, an app or a key only after the TV has accepted the command. If none of the inputs in the list is playing, *Input Source* shows "-". *Off / not reachable* means: the TV does not answer on the network.
 
@@ -169,9 +174,10 @@ $Answer = STV_SendRestAPIRequest(12345, 'avContent', 'setPlayContent', '[{"uri":
 - **Completely off is not standby.** If the TV is disconnected from power or has switched off its network in standby, the module cannot switch it on and reports *Off / not reachable*.
 - **Physical inputs only.** *Input Source* knows HDMI, AV and component inputs. Devices announced via HDMI-CEC, the built-in tuner and screen mirroring are not in the list; if anything other than one of these inputs is playing, the variable shows "-".
 - **The module only knows apps it has started itself.** The TV does not tell which app is running. *Start Application* therefore shows the app last started via Symcon and changes to "-" as soon as an input or a channel is playing again. An app started with the remote control does not appear; *Input Source* then shows "-".
+- **Picture settings only with names the module knows.** The names of the settings and values are those of the KD-75XE9405. If another model reports further ones, they appear with the name the TV delivers (e.g. `motionflow`). Ranges and values always come from the TV itself.
 - **Switching on takes a while.** While the TV is booting it already reports itself as on although it cannot be operated yet. The module therefore waits up to 90 seconds before setting *On*.
 - **Dropouts are absorbed.** If a TV that is on or in standby stops answering, the module checks the connection three times with one second each before reporting *Off / not reachable*. A single dropout of the interface does not change the status, only the second one in a row does. An error answer such as `404 Not Found` counts as a dropout as well.
-- **A wrong pre-shared key only shows with the first command that needs the key.** The TV reports its power state even without a valid key. In standby the module only queries that state; the error then shows when the lists are read or with the first switching command.
+- **A wrong pre-shared key only shows with the first command that needs the key.** The TV reports its power state, its inputs and its remote keys even without a valid key. In standby the module only queries the power state; the error then shows when the app list is read or with the first switching command.
 
 ## 7. Terms
 

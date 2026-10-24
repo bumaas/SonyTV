@@ -7,7 +7,7 @@ Je Datei die unveränderte Antwort des TV auf `<service>_<methode>`.
 |---|---|---|
 | `standby` | TV im Standby | 29.09.2026 |
 | `aktiv` | TV eingeschaltet, HDMI 3 läuft | 29.09.2026 |
-| `falscher-psk` | Anfrage mit falschem Pre-Shared Key: HTTP 403, für `setPowerStatus` und `getPlayingContentInfo` wortgleich. `getPowerStatus` antwortet auch mit falschem Schlüssel (HTTP 200). `/sony/IRCC` antwortet mit HTTP 403 und leerem Inhalt. | 29.09.2026 |
+| `falscher-psk` | Anfrage mit falschem Pre-Shared Key: HTTP 403, für `setPowerStatus` und `getPlayingContentInfo` wortgleich. `getPowerStatus` antwortet auch mit falschem Schlüssel (HTTP 200). `/sony/IRCC` antwortet mit HTTP 403 und leerem Inhalt. Am 24.10.2026 (TV an, HDMI 3) dazu: `getVolumeInformation`, `getCurrentExternalInputsStatus`, `getRemoteControllerInfo` und `getPictureQualitySettings` antworten normal (HTTP 200), `getApplicationList` und `getSystemInformation` mit HTTP 403. Die Dateien enthalten nur den Inhalt, den HTTP-Status setzen die Tests. | 29.09. und 24.10.2026 |
 | `illegal-state` | TV eingeschaltet, `getPlayingContentInfo` meldet Fehler 7. Aufgezeichnet um 19:45:07, kurz nach dem Einschalten; welcher Inhalt dabei lief, ist nicht festgehalten. | 29.09.2026 |
 | `tuner` | TV-Tuner, Sender „RTL HD" (`tv:dvbt`). Dazu die Antwort auf `setPlayContent`, mit dem umgeschaltet wurde. | 29.09.2026 |
 | `spiegelung` | Bildschirmspiegelung (`extInput:widi?port=1`), ohne verbundenes Gerät. Dazu die Antwort auf `setPlayContent`. | 29.09.2026 |
@@ -21,6 +21,9 @@ In `tuner`, `spiegelung` und `app-im-vordergrund` stand die Antwort 4, 8 und 12 
 jeweils wortgleich da. Die übrigen Abfragen (`getPowerStatus`, `getVolumeInformation`,
 `getCurrentExternalInputsStatus`) antworteten in allen drei Zuständen gleich und liegen deshalb nicht noch
 einmal bei. Gegenüber `aktiv` weichen nur die Lautstärke (63 statt 40) und das Feld `connection` von HDMI 3 ab.
+
+In `aktiv` stammen `video_getPictureQualitySettings` und `video_setPictureQualitySettings` vom 24.10.2026 (TV an,
+HDMI 3/ARC). Die Antwort auf das Setzen kam auf „Schärfe 50“ bei schon eingestellter Schärfe 50.
 
 **Nicht mitgeschnitten:** die Antwort auf `setActiveApp` (das Modul hat die App gestartet und Erfolg gemeldet)
 und ein Zustand mit angeschlossenem Kopfhörer.
