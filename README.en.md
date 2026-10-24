@@ -58,7 +58,7 @@ Under *Expert Parameters* there are three switches for logging:
 | `WriteDebugInformationToLogfile` | debug information is additionally written to the Symcon log |
 | `WriteDebugInformationToIPSLogger` | debug information is additionally written to the IPSLibrary log file |
 
-4. Apply. If the TV is on or in standby, the instance now reads the lists of inputs, apps and remote keys. If it was off, the instance catches up as soon as the TV is reachable. The buttons *Update remote key list*, *Update Input Source list* and *Update application list* read the lists again at any time.
+4. Apply. If the TV is on or in standby, the instance now reads the lists of inputs, apps and remote keys. If it was off, the instance catches up as soon as the TV is reachable. Reading the lists again is only needed after an app has been installed or removed on the TV or an input has been renamed. The button *Read lists again* does that and reports how many remote keys, inputs and apps it has read, or why a list did not arrive.
 
 **Instance states**
 
@@ -145,12 +145,13 @@ STV_RunSelfTest(int $InstanceID): string;          // self test as text, switche
 
 `STV_RunSelfTest` checks configuration, reachability, Pre-Shared Key and the three lists and returns one line per check (✓ fine, ⚠ warning, ✗ error, below it after → what to do) and finally `N errors, M warnings`, in the language of the Symcon installation. The button *Run self test* in the form shows the same.
 
-**Reading the lists again** – for example after installing a new app; the buttons in the form do the same:
+**Reading the lists again**, for example after installing a new app. The button *Read lists again* in the form does the same:
 
 ```php
-IPS_RequestAction($InstanceID, 'UpdateApplicationList', 0);
-IPS_RequestAction($InstanceID, 'UpdateRemoteKeyList', 0);
-IPS_RequestAction($InstanceID, 'GetSourceListInfo', 0);
+IPS_RequestAction($InstanceID, 'UpdateLists', 0);             // all three lists
+IPS_RequestAction($InstanceID, 'UpdateApplicationList', 0);   // apps only
+IPS_RequestAction($InstanceID, 'UpdateRemoteKeyList', 0);     // remote keys only
+IPS_RequestAction($InstanceID, 'GetSourceListInfo', 0);       // inputs only
 ```
 
 **For tinkerers and support**
@@ -160,7 +161,7 @@ STV_WriteAPIInformationToFile(int $InstanceID, string $Filename): bool;
 STV_SendRestAPIRequest(int $InstanceID, string $Service, string $Method, string $Params, string $Version): string;
 ```
 
-`STV_WriteAPIInformationToFile` writes all functions the TV knows to a file – with an empty file name (`''`) as *Sony \<model\>.txt* in Symcon's log directory. The parameter must always be given. This file helps with support requests.
+`STV_WriteAPIInformationToFile` writes all functions the TV knows to a file – with an empty file name (`''`) as *Sony \<model\>.txt* in Symcon's log directory. The parameter must always be given. This file helps with support requests. In the form the button *Create file with API information* in the section *Support* creates it and then shows its path.
 
 `STV_SendRestAPIRequest` sends any request to the TV, to try out functions the module does not offer itself. `$Params` is the parameter list as JSON, so always in square brackets; the TV's answer is returned as JSON, an empty string on error:
 

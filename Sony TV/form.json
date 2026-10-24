@@ -20,21 +20,23 @@
 
   ],
   "actions":  [
+    {"type": "Label", "caption": "Checks the settings, reachability, Pre-Shared Key and lists and shows the result. The first step when something does not work."},
     {"type": "Button", "caption": "Run self test (switches nothing)", "onClick": "echo STV_RunSelfTest($id);"},
     {"type": "Label", "visible": false, "caption": "Switching the variable PowerStatus: 2 = On; 0 (Off / not reachable) and 1 (Standby) both put the TV into standby, it cannot be switched fully off over the network. The value 0 is only shown when the TV does not answer."},
     {"type": "Label", "visible": false, "caption": "Script functions with their parameters: STV_SetPowerStatus($InstanceID, true = on / false = standby), STV_SetInputSource($InstanceID, '<title as in the options of InputSource, e.g. HDMI 2>'), STV_StartApplication($InstanceID, '<title as in the options of Application, e.g. Netflix>'), STV_SendRemoteKey($InstanceID, '<key name as in the options of SendRemoteKey, e.g. Home>'), STV_SetSpeakerVolume($InstanceID, <0 to 100>), STV_SetHeadphoneVolume($InstanceID, <0 to 100>), STV_SetAudioMute($InstanceID, true = muted / false), STV_UpdateAll($InstanceID). All return true when the TV confirmed the command, otherwise false with a warning."},
-    {"type": "Label", "visible": false, "caption": "For scripts: STV_RunSelfTest($InstanceID) returns the self test as text (configuration, reachability, Pre-Shared Key, lists; one line per check, last line 'N errors, M warnings') and switches nothing. The buttons below are IPS_RequestAction($InstanceID, '<Ident>', 0) with the idents UpdateStatusVariables, UpdateApplicationList, GetSourceListInfo and UpdateRemoteKeyList; they return false with a warning on failure. The lists themselves are the options of the variables SendRemoteKey, InputSource and Application; STV_ReadApplicationList($InstanceID) returns the apps as JSON."},
+    {"type": "Label", "visible": false, "caption": "For scripts: STV_RunSelfTest($InstanceID) returns the self test as text (configuration, reachability, Pre-Shared Key, lists; one line per check, last line 'N errors, M warnings') and switches nothing. The buttons below are IPS_RequestAction($InstanceID, '<Ident>', 0) with the idents UpdateStatusVariables, UpdateLists (all three lists; single lists: UpdateRemoteKeyList, GetSourceListInfo, UpdateApplicationList) and WriteAPIInformationToFile; they return false with a warning on failure. The lists themselves are the options of the variables SendRemoteKey, InputSource and Application; STV_ReadApplicationList($InstanceID) returns the apps as JSON."},
     {"type": "Label", "visible": false, "caption": "Picture settings (switch 'Create variables for the picture settings'): ident 'Picture' plus the setting of the TV, e.g. PictureSharpness (integer, range as in the slider) or PictureColorTemperature (string, values as in the options, e.g. 'warm'). Switch them with RequestAction while the TV is on. A variable without action is not available for the current input or picture mode."},
-    {"type": "Label", "caption": "With 'Update status variables', the variables can be updated once regardless of the set interval."},
+    {"type": "Label", "caption": "Queries the TV now and updates the status variables. With interval 0 the module does not query the TV regularly."},
     {"type": "Button", "caption": "Update status variables", "onClick": "IPS_RequestAction($id, 'UpdateStatusVariables', 0);"},
-    {"type": "Label", "caption": "With 'Update application list' the installed apps are read in again."},
-    {"type": "Button", "caption": "Update application list", "onClick": "IPS_RequestAction($id, 'UpdateApplicationList', 0);"},
-    {"type": "Label", "caption": "With 'Update Input Source list' the available Input Sources are read in again."},
-    {"type": "Button", "caption": "Update Input Source list", "onClick": "IPS_RequestAction($id, 'GetSourceListInfo', 0);"},
-    {"type": "Label", "caption": "With 'Update remote key list' the keys of the remote control are read in again."},
-    {"type": "Button", "caption": "Update remote key list", "onClick": "IPS_RequestAction($id, 'UpdateRemoteKeyList', 0);"},
-    {"type": "Label", "caption": "With 'Create file with API information' a support file is created in the Symcon log directory. It contains a list of all functions supported by the TV set."},
-    {"type": "Button", "caption": "Create file with API information", "onClick": "IPS_RequestAction($id, 'WriteAPIInformationToFile', 0);"},
+    {"type": "Label", "caption": "The module reads the apps, inputs and remote keys of the TV by itself when the settings are applied, and catches up as soon as the TV is reachable. Reading them again is only needed after an app has been installed or removed on the TV or an input has been renamed."},
+    {"type": "Button", "caption": "Read lists again", "onClick": "IPS_RequestAction($id, 'UpdateLists', 0);"},
+    {
+      "type":  "ExpansionPanel", "caption": "Support",
+      "items": [
+        {"type": "Label", "caption": "Creates the file 'Sony <model>.txt' in the Symcon log directory with all functions the TV knows. It is only needed for support requests or for extending the module."},
+        {"type": "Button", "caption": "Create file with API information", "onClick": "IPS_RequestAction($id, 'WriteAPIInformationToFile', 0);"}
+      ]
+    },
     {"type": "TestCenter"},
     {
       "type": "PopupAlert",

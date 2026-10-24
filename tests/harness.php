@@ -70,6 +70,8 @@ final class SonyTVHarness extends SonyTV
     public array $status = [];
     /** @var array<string, int> letztes SetTimerInterval je Timer */
     public array $timer = [];
+    /** @var array<string, array<string, mixed>> letztes UpdateFormField je Feld und Parameter */
+    public array $formular = [];
     /** null = Schlüssel zurückgeben wie der Stub, 'de' = Übersetzung aus locale.json */
     public static ?string $sprache = null;
     private int $logOffset = 0;
@@ -165,6 +167,20 @@ final class SonyTVHarness extends SonyTV
     {
         $this->timer[$Ident] = $Milliseconds;
         return parent::SetTimerInterval($Ident, $Milliseconds);
+    }
+
+    protected function UpdateFormField(string $Field, string $Parameter, mixed $Value): bool
+    {
+        $this->formular[$Field][$Parameter] = $Value;
+        return parent::UpdateFormField($Field, $Parameter, $Value);
+    }
+
+    /** Text des Meldungsfensters, wenn es zuletzt geöffnet wurde, sonst null; setzt es zurück. */
+    public function meldungsfenster(): ?string
+    {
+        $text           = ($this->formular['MsgBox']['visible'] ?? false) === true ? (string)$this->formular['MsgText']['caption'] : null;
+        $this->formular = [];
+        return $text;
     }
 
     /** Lädt alle Mitschnitte eines Zustands (standby, aktiv …) als Antworten. */
@@ -287,6 +303,23 @@ function konfigurierteInstanz(string $zustand, string $host = '192.168.178.21'):
     IPS_SetProperty($m->id(), 'Host', $host);
     IPS_ApplyChanges($m->id());
     return $m;
+}
+
+/** Alle Elemente aus form.json (elements und actions), auch die in Panels, in Reihenfolge. */
+function formularElemente(string $bereich = 'actions'): array
+{
+    $formular = json_decode((string)file_get_contents(dirname(__DIR__) . '/Sony TV/form.json'), true, 512, JSON_THROW_ON_ERROR);
+    $flach    = static function (array $elemente) use (&$flach): array {
+        $liste = [];
+        foreach ($elemente as $element) {
+            $liste[] = $element;
+            if (isset($element['items'])) {
+                array_push($liste, ...$flach($element['items']));
+            }
+        }
+        return $liste;
+    };
+    return $flach($formular[$bereich]);
 }
 
 /** Führt $aufruf aus und liefert die Meldung einer Warnung/Exception, sonst null. */

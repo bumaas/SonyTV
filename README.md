@@ -58,7 +58,7 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 | `WriteDebugInformationToLogfile` | Debug-Informationen werden zusätzlich in das Symcon-Log geschrieben |
 | `WriteDebugInformationToIPSLogger` | Debug-Informationen werden zusätzlich in das Logfile der IPSLibrary geschrieben |
 
-4. Übernehmen. Ist der Fernseher eingeschaltet oder im Standby, liest die Instanz jetzt die Liste der Eingänge, Apps und Fernbedienungstasten ein. War er ausgeschaltet, holt die Instanz das nach, sobald er erreichbar ist. Die Knöpfe *Tastenliste aktualisieren*, *Liste der Eingangsquellen aktualisieren* und *Applikationsliste aktualisieren* lesen die Listen jederzeit neu ein.
+4. Übernehmen. Ist der Fernseher eingeschaltet oder im Standby, liest die Instanz jetzt die Liste der Eingänge, Apps und Fernbedienungstasten ein. War er ausgeschaltet, holt die Instanz das nach, sobald er erreichbar ist. Neu einlesen muss man die Listen nur, wenn am Fernseher eine App installiert oder entfernt oder ein Eingang umbenannt wurde. Dafür gibt es den Knopf *Listen neu einlesen*; er meldet, wie viele Tasten, Eingänge und Apps er gelesen hat, oder warum eine Liste nicht ankam.
 
 **Meldungen der Instanz**
 
@@ -145,12 +145,13 @@ STV_RunSelfTest(int $InstanzID): string;          // Selbsttest als Text, schalt
 
 `STV_RunSelfTest` prüft Konfiguration, Erreichbarkeit, Pre-Shared Key und die drei Listen und liefert eine Zeile je Prüfung (✓ in Ordnung, ⚠ Warnung, ✗ Fehler, darunter mit → was zu tun ist) und zum Schluss `N Fehler, M Warnungen`, in der Sprache der Symcon-Installation. Dasselbe zeigt der Knopf *Selbsttest ausführen* im Formular.
 
-**Listen neu einlesen** – etwa nach der Installation einer neuen App; dasselbe tun die Knöpfe im Formular:
+**Listen neu einlesen**, etwa nach der Installation einer neuen App. Dasselbe tut der Knopf *Listen neu einlesen* im Formular:
 
 ```php
-IPS_RequestAction($InstanzID, 'UpdateApplicationList', 0);
-IPS_RequestAction($InstanzID, 'UpdateRemoteKeyList', 0);
-IPS_RequestAction($InstanzID, 'GetSourceListInfo', 0);
+IPS_RequestAction($InstanzID, 'UpdateLists', 0);             // alle drei Listen
+IPS_RequestAction($InstanzID, 'UpdateApplicationList', 0);   // nur die Apps
+IPS_RequestAction($InstanzID, 'UpdateRemoteKeyList', 0);     // nur die Tasten
+IPS_RequestAction($InstanzID, 'GetSourceListInfo', 0);       // nur die Eingänge
 ```
 
 **Für Tüftler und den Support**
@@ -160,7 +161,7 @@ STV_WriteAPIInformationToFile(int $InstanzID, string $Dateiname): bool;
 STV_SendRestAPIRequest(int $InstanzID, string $Service, string $Methode, string $Parameter, string $Version): string;
 ```
 
-`STV_WriteAPIInformationToFile` schreibt alle Funktionen, die der Fernseher kennt, in eine Datei – mit leerem Dateinamen (`''`) als *Sony \<Modell\>.txt* ins Log-Verzeichnis von Symcon. Der Parameter muss immer angegeben werden. Diese Datei hilft bei Supportanfragen.
+`STV_WriteAPIInformationToFile` schreibt alle Funktionen, die der Fernseher kennt, in eine Datei – mit leerem Dateinamen (`''`) als *Sony \<Modell\>.txt* ins Log-Verzeichnis von Symcon. Der Parameter muss immer angegeben werden. Diese Datei hilft bei Supportanfragen. Im Formular erstellt sie der Knopf *Datei mit API-Informationen erstellen* im Bereich *Support* und nennt danach ihren Pfad.
 
 `STV_SendRestAPIRequest` sendet eine beliebige Anfrage an den Fernseher, um Funktionen auszuprobieren, die das Modul nicht selbst anbietet. `$Parameter` ist die Parameterliste als JSON, also immer in eckigen Klammern; zurück kommt die Antwort des Fernsehers als JSON, bei einem Fehler ein Leerstring:
 

@@ -43,15 +43,14 @@ SonyTVHarness::$ping = false;
 $m                   = konfigurierteInstanz('aktiv');
 pruefe($m->optionen('SendRemoteKey') === [-1 => '-'] && $m->werte()['SendRemoteKey'] === -1, 'TV aus: Tastenliste leer, Variable auf „keine Auswahl"');
 $meldung = meldungVon(fn () => $m->SendRemoteKey('Home'));
-pruefe($meldung === 'Remote key list not yet read. Please update the remote key list.', 'ohne Tastenliste: Meldung nennt den Knopf, nicht die Registrierung');
+pruefe($meldung === 'Remote keys not read yet. Read the lists again (button \'Read lists again\' or IPS_RequestAction($InstanceID, \'UpdateLists\', 0)).', 'ohne Tastenliste: Meldung nennt den Knopf, nicht die Registrierung');
 
 // Knopf im Formular
 SonyTVHarness::$ping = true;
 $m->RequestAction('UpdateRemoteKeyList', 0);
-pruefe(count($m->optionen('SendRemoteKey')) === 147, 'Knopf „Update remote key list" liest die 146 Tasten');
-$formular = json_decode((string)file_get_contents(dirname(__DIR__) . '/Sony TV/form.json'), true, 512, JSON_THROW_ON_ERROR);
-$onClicks = array_column($formular['actions'], 'onClick');
-pruefe(in_array("IPS_RequestAction(\$id, 'UpdateRemoteKeyList', 0);", $onClicks, true), 'form.json hat den Knopf');
+pruefe(count($m->optionen('SendRemoteKey')) === 147, 'Skript-Ident UpdateRemoteKeyList liest die 146 Tasten');
+$onClicks = array_column(formularElemente(), 'onClick');
+pruefe(in_array("IPS_RequestAction(\$id, 'UpdateLists', 0);", $onClicks, true), 'form.json hat den Knopf (alle Listen)');
 
 // Listen werden nachgeholt, sobald der TV erreichbar ist
 SonyTVHarness::$ping = false;

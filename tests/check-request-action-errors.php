@@ -45,9 +45,9 @@ pruefe(meldungVon(fn () => $m->RequestAction('Application', -1)) === null && $m-
 
 // --- leere Auswahlliste ---
 $leer = konfigurierteInstanz('standby');
-foreach ([['ApplicationList', 'Application', 'Application List not yet set. Please update the application list.'],
-    ['SourceList', 'InputSource', 'Source list not yet read. Please update the list of input sources.'],
-    ['RemoteControllerInfo', 'SendRemoteKey', 'Remote key list not yet read. Please update the remote key list.']] as [$attribut, $ident, $erwartet]) {
+foreach ([['ApplicationList', 'Application', 'Apps not read yet. Read the lists again (button \'Read lists again\' or IPS_RequestAction($InstanceID, \'UpdateLists\', 0)).'],
+    ['SourceList', 'InputSource', 'Inputs not read yet. Read the lists again (button \'Read lists again\' or IPS_RequestAction($InstanceID, \'UpdateLists\', 0)).'],
+    ['RemoteControllerInfo', 'SendRemoteKey', 'Remote keys not read yet. Read the lists again (button \'Read lists again\' or IPS_RequestAction($InstanceID, \'UpdateLists\', 0)).']] as [$attribut, $ident, $erwartet]) {
     $leer->attributSetzen($attribut, '[]');
     $leer->marke();
     $meldung = meldungVon(fn () => $leer->RequestAction($ident, 0));

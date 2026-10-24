@@ -287,15 +287,22 @@ class SonyTV extends IPSModuleStrict
                 return fn (): bool => $this->UpdateAll();
 
             case 'UpdateStatusVariables':
-                return fn (): bool => $this->runWithVisualFeedback([$this, 'UpdateAll'], 'Error while updating.');
+                return fn (): bool => $this->updateStatusVariablesWithFeedback();
+
+            case 'UpdateLists':
+                return fn (): bool => $this->updateListsWithFeedback([self::VAR_IDENT_SEND_REMOTE_KEY, self::VAR_IDENT_INPUT_SOURCE, self::VAR_IDENT_APPLICATION]);
+
+            case 'UpdateRemoteKeyList':
+                return fn (): bool => $this->updateListsWithFeedback([self::VAR_IDENT_SEND_REMOTE_KEY]);
 
             case 'GetSourceListInfo':
+                return fn (): bool => $this->updateListsWithFeedback([self::VAR_IDENT_INPUT_SOURCE]);
+
             case 'UpdateApplicationList':
-            case 'UpdateRemoteKeyList':
-                return fn (): bool => $this->runWithVisualFeedback([$this, $ident], 'Error while updating.');
+                return fn (): bool => $this->updateListsWithFeedback([self::VAR_IDENT_APPLICATION]);
 
             case 'WriteAPIInformationToFile':
-                return fn (): bool => $this->runWithVisualFeedback(fn (): bool => $this->WriteAPIInformationToFile(''), 'Error writing the file.');
+                return fn (): bool => $this->writeApiInformationWithFeedback();
 
             default:
                 $setting = $this->getPictureSettings()[$ident] ?? null;
@@ -421,15 +428,90 @@ class SonyTV extends IPSModuleStrict
         trigger_error(sprintf('Invalid value "%s" for "%s" (allowed: %s)', $shownValue, $ident, $allowed), E_USER_WARNING);
     }
 
-    private function runWithVisualFeedback(callable $action, string $failureTranslationKey): bool
+    /**
+     * Knopf „Update status variables": fragt den TV ab und meldet den Zustand oder den Grund des Fehlschlags.
+     *
+     * @throws \JsonException
+     */
+    private function updateStatusVariablesWithFeedback(): bool
     {
-        if ($action()) {
-            $this->MsgBox($this->Translate('OK'));
-            return true;
+        if (!$this->UpdateAll()) {
+            $this->MsgBox(sprintf($this->Translate('Status variables not updated: %s'), $this->getFailureReason()));
+            return false;
         }
 
-        $this->MsgBox($this->Translate($failureTranslationKey));
-        return false;
+        $this->MsgBox(sprintf($this->Translate('Status variables updated, power status: %s.'), $this->Translate(match ($this->GetValue(self::VAR_IDENT_POWER_STATUS)) {
+            self::STATUS_ACTIVE  => 'On',
+            self::STATUS_STANDBY => 'Standby',
+            default              => 'Off / not reachable',
+        })));
+        return true;
+    }
+
+    /**
+     * Knopf „Read lists again" (und die Skript-Idents je Liste): liest die Listen und meldet je Liste die Anzahl
+     * oder den Grund des Fehlschlags.
+     *
+     * @param list<string> $idents
+     *
+     * @throws \JsonException
+     */
+    private function updateListsWithFeedback(array $idents): bool
+    {
+        $sentences = [];
+        $success   = true;
+        foreach ($idents as $ident) {
+            [$read, $countFormat, $failureFormat] = match ($ident) {
+                self::VAR_IDENT_SEND_REMOTE_KEY => [$this->UpdateRemoteKeyList(...), '%d remote keys read.', 'Remote keys not read: %s'],
+                self::VAR_IDENT_INPUT_SOURCE    => [$this->GetSourceListInfo(...), '%d inputs read.', 'Inputs not read: %s'],
+                self::VAR_IDENT_APPLICATION     => [$this->UpdateApplicationList(...), '%d apps read.', 'Apps not read: %s'],
+            };
+            if ($read()) {
+                $sentences[] = sprintf($this->Translate($countFormat), count($this->getListEntries($ident)));
+            } else {
+                $sentences[] = sprintf($this->Translate($failureFormat), $this->getFailureReason());
+                $success     = false;
+            }
+        }
+
+        $this->MsgBox(implode(' ', $sentences));
+        return $success;
+    }
+
+    /**
+     * Knopf „Create file with API information": meldet den Pfad der Datei oder den Grund des Fehlschlags.
+     *
+     * @throws \JsonException
+     */
+    private function writeApiInformationWithFeedback(): bool
+    {
+        $filename = $this->writeApiInformation('');
+        if ($filename === null) {
+            $this->MsgBox(sprintf($this->Translate('File not created: %s'), $this->getFailureReason()));
+            return false;
+        }
+
+        $this->MsgBox(sprintf($this->Translate('File created: %s'), $filename));
+        return true;
+    }
+
+    /**
+     * Grund, warum eine Anfrage gerade gescheitert ist, für die Meldung an den Anwender. Der Schlüssel geht vor,
+     * weil der TV dann antwortet; ein Ping unterscheidet „antwortet nicht" von einer unbrauchbaren Antwort.
+     */
+    private function getFailureReason(): string
+    {
+        $configurationError = $this->getConfigurationError();
+        if ($configurationError !== 0) {
+            return $this->getConfigurationErrorText($configurationError);
+        }
+        if ($this->GetBuffer(self::BUFFER_PSK_REJECTED) === '1') {
+            return $this->Translate('The TV rejected the Pre-Shared Key (error 403). Enter the same key as on the TV.');
+        }
+        if (!$this->ping($this->ReadPropertyString(self::PROP_HOST), self::PING_TIMEOUT_MS)) {
+            return $this->Translate("TV does not answer: disconnected from mains, 'Remote start' switched off or wrong IP address?");
+        }
+        return $this->Translate('The TV gave no usable answer, details are in the debug output.');
     }
 
     /**
@@ -801,11 +883,11 @@ class SonyTV extends IPSModuleStrict
     {
         return match ($ident) {
             self::VAR_IDENT_SEND_REMOTE_KEY => ['Send Remote Key', 50, self::ATTR_REMOTECONTROLLERINFO, 'name', 'name',
-                'Remote key list not yet read. Please update the remote key list.'],
+                "Remote keys not read yet. Read the lists again (button 'Read lists again' or IPS_RequestAction(\$InstanceID, 'UpdateLists', 0))."],
             self::VAR_IDENT_INPUT_SOURCE => ['Input Source', 60, self::ATTR_SOURCELIST, 'uri', 'title',
-                'Source list not yet read. Please update the list of input sources.'],
+                "Inputs not read yet. Read the lists again (button 'Read lists again' or IPS_RequestAction(\$InstanceID, 'UpdateLists', 0))."],
             self::VAR_IDENT_APPLICATION => ['Start Application', 70, self::ATTR_APPLICATIONLIST, 'uri', 'title',
-                'Application List not yet set. Please update the application list.'],
+                "Apps not read yet. Read the lists again (button 'Read lists again' or IPS_RequestAction(\$InstanceID, 'UpdateLists', 0))."],
         };
     }
 
@@ -868,10 +950,20 @@ class SonyTV extends IPSModuleStrict
      */
     public function WriteAPIInformationToFile(string $filename): bool
     {
+        return $this->writeApiInformation($filename) !== null;
+    }
+
+    /**
+     * Schreibt die Supportdatei und liefert ihren Pfad, null bei einem Fehlschlag.
+     *
+     * @throws \JsonException
+     */
+    private function writeApiInformation(string $filename): ?string
+    {
         $response = $this->callRestApi('system', 'getSystemInformation', [], '1.0', [], []);
         $result   = $this->getResult($response);
         if ($result === null) {
-            return false;
+            return null;
         }
 
         if ($filename === '') {
@@ -887,7 +979,7 @@ class SonyTV extends IPSModuleStrict
 
         $this->Logger_Inf('Writing API Information to \'' . $filename . '\'');
 
-        return file_put_contents($filename, $fileContent) > 0;
+        return file_put_contents($filename, $fileContent) > 0 ? $filename : null;
     }
 
     /**

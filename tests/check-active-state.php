@@ -76,6 +76,6 @@ $m->attributSetzen('RemoteControllerInfo', '');
 $meldung = meldungVon(fn () => $m->UpdateAll());
 pruefe($meldung === null, 'leeres Attribut SourceList: UpdateAll läuft durch' . ($meldung === null ? '' : ': ' . substr($meldung, 0, 60)));
 $meldung = meldungVon(fn () => $m->SendRemoteKey('Home'));
-pruefe($meldung === 'Remote key list not yet read. Please update the remote key list.', 'leeres Attribut RemoteControllerInfo: Meldung statt Absturz');
+pruefe($meldung === 'Remote keys not read yet. Read the lists again (button \'Read lists again\' or IPS_RequestAction($InstanceID, \'UpdateLists\', 0)).', 'leeres Attribut RemoteControllerInfo: Meldung statt Absturz');
 
 ergebnis();

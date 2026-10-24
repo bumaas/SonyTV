@@ -95,6 +95,16 @@ damit die Log-Zeile zum Konfigurationsfehler. Bezeichner (`PowerStatus`, `IPS_Re
 am TV bleiben wörtlich. Der Stub übersetzt nicht; `SonyTVHarness::$sprache = 'de'` lädt `locale.json`, und
 `tests/check-self-test.php` verlangt damit für jeden Fall, dass keine Zeile englisch bleibt.
 
+## Knöpfe im Aktionsbereich
+
+Seit 2.3 build 48 (Durchsicht aus Anwendersicht am 24.10.2026): Jeder Knopf hat davor einen Text, der sagt, wann man
+ihn braucht, nicht was die Beschriftung schon sagt. Die drei Listen liest ein Knopf `UpdateLists`; die Idents je
+Liste (`UpdateRemoteKeyList`, `GetSourceListInfo`, `UpdateApplicationList`) bleiben für Skripte. Die API-Datei steht
+im Panel „Support". Die Meldungsfenster nennen Anzahlen, Zustand oder Pfad, bei einem Fehlschlag den Grund aus
+`getFailureReason()` (Konfiguration, dann Buffer `pskRejected`, dann ein Ping, sonst „keine verwertbare Antwort").
+Ein nicht erreichbarer TV ist für „Update status variables" kein Fehlschlag: `UpdateAll` liefert true und die
+Meldung „Aus / nicht erreichbar". `tests/check-form-actions.php` hält das fest.
+
 ## Nähte für die Tests
 
 Alles, was im Betrieb ins Netz geht, wartet oder vom Kernel abhängt, läuft über eine überschreibbare
