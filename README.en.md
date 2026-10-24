@@ -54,7 +54,7 @@ Under *Expert Parameters* there are three switches for logging:
 
 | Field | Meaning |
 | :---- | :------ |
-| `WriteLogInformationToIPSLogger` | information and error messages are additionally written to the IPSLibrary log file (up to 2.2 build 41, information then went there only) |
+| `WriteLogInformationToIPSLogger` | information, warnings and error messages are additionally written to the IPSLibrary log file (up to 2.2 build 41, information then went there only) |
 | `WriteDebugInformationToLogfile` | debug information is additionally written to the Symcon log |
 | `WriteDebugInformationToIPSLogger` | debug information is additionally written to the IPSLibrary log file |
 
@@ -72,7 +72,7 @@ Under *Expert Parameters* there are three switches for logging:
 | IP address is not valid | `Host` is not an IP address | enter an IP address instead of a host name |
 | Update interval must not be negative | `UpdateInterval` is less than 0 | enter 0 (no update) or a number of seconds |
 
-Both errors are written once to the Symcon log when they occur, and so is their recovery (`TV … answers again.`, `Pre-Shared Key accepted …`). The state "Pre-Shared Key rejected" stays until a command that needs the key succeeds. The TV reports its power state, volume, inputs, remote keys and picture settings even without a valid key, so these queries tell nothing about it.
+Both are written once to the Symcon log when they occur, "does not answer" as a warning (a TV without mains power is no error) and the rejected key as an error, and so is their recovery (`TV … answers again.`, `Pre-Shared Key accepted …`). The state "Pre-Shared Key rejected" stays until a command that needs the key succeeds. The TV reports its power state, volume, inputs, remote keys and picture settings even without a valid key, so these queries tell nothing about it.
 
 With any of the three configuration errors (IP address, interval) no update runs and switching commands are rejected. The Symcon log additionally shows the error with the value entered, e.g. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 

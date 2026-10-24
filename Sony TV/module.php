@@ -1494,8 +1494,10 @@ class SonyTV extends IPSModuleStrict
             $this->Logger_Inf(sprintf('Pre-Shared Key accepted by the TV %s.', $host));
         }
 
+        // nur eine Warnung: ein stromlos geschalteter TV ist Alltag, kein Fehler, und an einen Error hängt der
+        // IPSLogger die ganze Aufrufkette (Burkhard 24.10.2026)
         if ($newStatus === self::STATUS_INST_NOT_REACHABLE) {
-            $this->Logger_Err(sprintf(
+            $this->Logger_Wrn(sprintf(
                 "TV %s does not answer (no reply to ping or to getPowerStatus). Is it disconnected from mains, is 'Remote start' switched off, or is the IP address wrong?",
                 $host
             ));
@@ -2071,6 +2073,16 @@ class SonyTV extends IPSModuleStrict
         }
 
         $this->LogMessage($message, KL_ERROR);
+    }
+
+    private function Logger_Wrn(string $message): void
+    {
+        $this->SendDebug('LOG_WARNING', $message, 0);
+        if (function_exists('IPSLogger_Wrn') && $this->ReadPropertyBoolean('WriteLogInformationToIPSLogger')) {
+            IPSLogger_Wrn(__CLASS__, $message);
+        }
+
+        $this->LogMessage($message, KL_WARNING);
     }
 
     private function Logger_Inf(string $message): void

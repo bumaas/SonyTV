@@ -54,7 +54,7 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 
 | Feld | Bedeutung |
 | :--- | :-------- |
-| `WriteLogInformationToIPSLogger` | Informationen und Fehlermeldungen gehen zusätzlich in das Logfile der IPSLibrary (bis 2.2 build 41 gingen Informationen dann nur dorthin) |
+| `WriteLogInformationToIPSLogger` | Informationen, Warnungen und Fehlermeldungen gehen zusätzlich in das Logfile der IPSLibrary (bis 2.2 build 41 gingen Informationen dann nur dorthin) |
 | `WriteDebugInformationToLogfile` | Debug-Informationen werden zusätzlich in das Symcon-Log geschrieben |
 | `WriteDebugInformationToIPSLogger` | Debug-Informationen werden zusätzlich in das Logfile der IPSLibrary geschrieben |
 
@@ -72,7 +72,7 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 | IP-Adresse ist nicht gültig | `Host` ist keine IP-Adresse | IP-Adresse statt Hostnamen eintragen |
 | Das Aktualisierungsintervall darf nicht negativ sein | `UpdateInterval` ist kleiner als 0 | 0 (keine Aktualisierung) oder eine Zahl von Sekunden eintragen |
 
-Beide Fehler stehen beim Wechsel einmal im Log von Symcon, ebenso ihre Behebung (`TV … answers again.`, `Pre-Shared Key accepted …`). Der Status „Pre-Shared Key abgelehnt" bleibt stehen, bis ein Befehl mit Schlüssel gelingt. Ein/Aus-Zustand, Lautstärke, Eingänge, Fernbedienungstasten und Bildeinstellungen meldet der Fernseher auch ohne gültigen Schlüssel, ihre Abfrage sagt darüber also nichts.
+Beide stehen beim Wechsel einmal im Log von Symcon, „antwortet nicht“ als Warnung (ein stromlos geschalteter Fernseher ist kein Fehler) und der abgelehnte Schlüssel als Fehler, ebenso ihre Behebung (`TV … answers again.`, `Pre-Shared Key accepted …`). Der Status „Pre-Shared Key abgelehnt" bleibt stehen, bis ein Befehl mit Schlüssel gelingt. Ein/Aus-Zustand, Lautstärke, Eingänge, Fernbedienungstasten und Bildeinstellungen meldet der Fernseher auch ohne gültigen Schlüssel, ihre Abfrage sagt darüber also nichts.
 
 Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualisierung, und Schaltbefehle werden abgewiesen. Im Log von Symcon steht der Fehler zusätzlich mit dem eingetragenen Wert, z. B. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 

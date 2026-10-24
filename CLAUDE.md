@@ -84,7 +84,7 @@ sind; nicht mehr gemeldete Ziele zählen mit, aber nicht als schaltbar. `readLis
 
 ## Protokoll
 
-`Logger_Err` und `Logger_Inf` schreiben immer ins Debug und ins Symcon-Log, mit `WriteLogInformationToIPSLogger`
+`Logger_Err`, `Logger_Wrn` und `Logger_Inf` schreiben immer ins Debug und ins Symcon-Log, mit `WriteLogInformationToIPSLogger`
 zusätzlich in die IPSLibrary (bis build 41 gingen Infos dann nur dorthin und waren über MCP nicht zu sehen, an
 #36393 ist der Schalter an). `tests/check-logging.php` hält das fest.
 
@@ -132,7 +132,10 @@ im Log (`getConfigurationErrorText()`), weil eine KI über MCP nur den Statuscod
 ## Instanzstatus im Betrieb
 
 `refreshInstanceStatus()` setzt den Status aus der Variable `PowerStatus` und dem Buffer `pskRejected` und
-schreibt jeden Wechsel einmal ins Log (Fehler als `Logger_Err`, Behebung als `Logger_Inf`):
+schreibt jeden Wechsel einmal ins Log (201 als `Logger_Wrn`, 203 als `Logger_Err`, Behebung als `Logger_Inf`). 201 ist
+seit build 50 nur eine Warnung: Am nuc wird der TV nach dem Fernsehabend stromlos geschaltet, und an einen Error hängt
+der IPSLogger die ganze Aufrufkette an die Push-Nachricht (Entscheidung Burkhard 24.10.2026; wird es zu viel, wäre
+Info der nächste Schritt). Die Stufen:
 **201** TV antwortet nicht (`PowerStatus` = Aus; geht vor), **203** Pre-Shared Key abgelehnt, sonst 102.
 104 bleibt nur für „Zustand unbekannt" in `ApplyChanges`. `noteAuthentication()` in `SendCurlPost()` wertet
 jede Antwort **vor** dem Filter der ignorierten Fehler aus (`getPlayingContentInfo` ignoriert 403): HTTP 403
