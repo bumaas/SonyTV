@@ -20,7 +20,7 @@ Controls Sony Bravia TVs over the network: power on and off, volume and mute, in
 ## 1. When do I need this?
 
 - **The TV should take part in scenes.** "Movie night" switches the TV on, selects the receiver's input and sets the volume; leaving the house switches it off.
-- **The TV's state should control other things.** While the TV is on, the lights are dimmed or the blinds are closed – that is what the status variable *Status* is for.
+- **The TV's state should control other things.** While the TV is on, the lights are dimmed or the blinds are closed. That is what the status variable *Status* is for.
 - **The remote control should be available in the visualization.** Inputs, apps and all keys the TV knows are offered as selection lists.
 
 ## 2. Installation and first run
@@ -72,7 +72,7 @@ Under *Expert Parameters* there are three switches for logging:
 | IP address is not valid | `Host` is not an IP address | enter an IP address instead of a host name |
 | Update interval must not be negative | `UpdateInterval` is less than 0 | enter 0 (no update) or a number of seconds |
 
-Both errors are written once to the Symcon log when they occur, and so is their recovery (`TV … answers again.`, `Pre-Shared Key accepted …`). The state "Pre-Shared Key rejected" stays until a command that needs the key succeeds – the TV reports its power state, volume, inputs, remote keys and picture settings even without a valid key, so these queries tell nothing about it.
+Both errors are written once to the Symcon log when they occur, and so is their recovery (`TV … answers again.`, `Pre-Shared Key accepted …`). The state "Pre-Shared Key rejected" stays until a command that needs the key succeeds. The TV reports its power state, volume, inputs, remote keys and picture settings even without a valid key, so these queries tell nothing about it.
 
 With any of the three configuration errors (IP address, interval) no update runs and switching commands are rejected. The Symcon log additionally shows the error with the value entered, e.g. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 
@@ -80,7 +80,7 @@ With any of the three configuration errors (IP address, interval) no update runs
 
 | Name | Ident | Presentation | Meaning |
 | :--- | :---- | :----------- | :------ |
-| Status | `PowerStatus` | Enumeration | Off / not reachable, Standby or On. Selecting *On* switches the TV on; *Off / not reachable* and *Standby* both put it into standby – the TV cannot be switched fully off over the network. *Off / not reachable* only appears when the TV does not answer. |
+| Status | `PowerStatus` | Enumeration | Off / not reachable, Standby or On. Selecting *On* switches the TV on; *Off / not reachable* and *Standby* both put it into standby; the TV cannot be switched fully off over the network. *Off / not reachable* only appears when the TV does not answer. |
 | Mute | `AudioMute` | Switch | mute |
 | Speaker Volume | `SpeakerVolume` | Slider 0–100 % | volume of the speakers |
 | Headphone Volume | `HeadphoneVolume` | Slider 0–100 % | volume of the headphone output |
@@ -88,7 +88,7 @@ With any of the three configuration errors (IP address, interval) no update runs
 | Input Source | `InputSource` | Enumeration | current input; selecting switches over |
 | Start Application | `Application` | Enumeration | selecting starts the app |
 
-The selection lists for keys, inputs and apps come from the TV itself and are stored directly at the respective variable – separately for each TV if there are several, and without a limit on their number. Every entry has a fixed number as its value. It keeps that number even if apps are added or removed later; -1 means "no selection".
+The selection lists for keys, inputs and apps come from the TV itself and are stored directly at the respective variable, separately for each TV if there are several, and without a limit on their number. Every entry has a fixed number as its value. It keeps that number even if apps are added or removed later; -1 means "no selection".
 
 **Picture settings.** With the switch `ShowPictureSettings` the instance creates one variable for every picture setting the TV reports; the KD-75XE9405 reports 13. The ident is `Picture` plus the name used by the TV, e.g. `PictureSharpness`, `PictureBrightness` or `PictureColorTemperature`. Settings with a numeric range (brightness, contrast, colour, hue, sharpness) become sliders with the limits of the TV, the others enumerations. Their value is the text of the TV, e.g. `warm` or `medium`, and that is also how they are switched: `RequestAction(IPS_GetObjectIDByIdent('PictureColorTemperature', $tv), 'warm')`.
 
@@ -96,7 +96,7 @@ The values apply to the input and picture mode currently playing. When the input
 
 The variables show an input, an app or a key only after the TV has accepted the command. If none of the inputs in the list is playing, *Input Source* shows "-". *Off / not reachable* means: the TV does not answer on the network.
 
-**Note for users of older versions:** Up to 2.1 build 27 the module used the variable profiles `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` and `STV.Applications`. They are deleted automatically as soon as no variable and no chart uses them any more. If a variable has one of these profiles set as its custom profile, it stays there and is no longer updated – remove the custom profile in the variable settings so that the module's presentation takes effect. As long as Symcon cannot read one of the charts, the profiles are kept as a precaution.
+**Note for users of older versions:** Up to 2.1 build 27 the module used the variable profiles `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` and `STV.Applications`. They are deleted automatically as soon as no variable and no chart uses them any more. If a variable has one of these profiles set as its custom profile, it stays there and is no longer updated. Remove the custom profile in the variable settings so that the module's presentation takes effect. As long as Symcon cannot read one of the charts, the profiles are kept as a precaution.
 
 ## 4. Automation
 
@@ -131,7 +131,7 @@ STV_StartApplication(int $InstanceID, string $App): bool;   // e.g. 'YouTube'
 STV_SendRemoteKey(int $InstanceID, string $Key): bool;      // e.g. 'Home', 'VolumeUp'
 ```
 
-All of them return `true` when the TV confirmed the command. `STV_SetPowerStatus` also returns `true` when the TV is in the requested state afterwards without having answered – this happens when switching on.
+All of them return `true` when the TV confirmed the command. `STV_SetPowerStatus` also returns `true` when the TV is in the requested state afterwards without having answered. This happens when switching on.
 
 The names of inputs, apps and keys differ from device to device; valid are the ones shown in the selection lists of the status variables. `STV_SetHeadphoneVolume` is not supported by every model (the KD-65X8505B answers `40800 - target not supported`).
 
@@ -161,7 +161,7 @@ STV_WriteAPIInformationToFile(int $InstanceID, string $Filename): bool;
 STV_SendRestAPIRequest(int $InstanceID, string $Service, string $Method, string $Params, string $Version): string;
 ```
 
-`STV_WriteAPIInformationToFile` writes all functions the TV knows to a file – with an empty file name (`''`) as *Sony \<model\>.txt* in Symcon's log directory. The parameter must always be given. This file helps with support requests. In the form the button *Create file with API information* in the section *Support* creates it and then shows its path.
+`STV_WriteAPIInformationToFile` writes all functions the TV knows to a file, with an empty file name (`''`) as *Sony \<model\>.txt* in Symcon's log directory. The parameter must always be given. This file helps with support requests. In the form the button *Create file with API information* in the section *Support* creates it and then shows its path.
 
 `STV_SendRestAPIRequest` sends any request to the TV, to try out functions the module does not offer itself. `$Params` is the parameter list as JSON, so always in square brackets; the TV's answer is returned as JSON, an empty string on error:
 

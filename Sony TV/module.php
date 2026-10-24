@@ -459,23 +459,32 @@ class SonyTV extends IPSModuleStrict
     private function updateListsWithFeedback(array $idents): bool
     {
         $sentences = [];
-        $success   = true;
+        $failed    = [];
         foreach ($idents as $ident) {
-            [$read, $countFormat, $failureFormat] = match ($ident) {
-                self::VAR_IDENT_SEND_REMOTE_KEY => [$this->UpdateRemoteKeyList(...), '%d remote keys read.', 'Remote keys not read: %s'],
-                self::VAR_IDENT_INPUT_SOURCE    => [$this->GetSourceListInfo(...), '%d inputs read.', 'Inputs not read: %s'],
-                self::VAR_IDENT_APPLICATION     => [$this->UpdateApplicationList(...), '%d apps read.', 'Apps not read: %s'],
+            [$read, $countFormat, $label] = match ($ident) {
+                self::VAR_IDENT_SEND_REMOTE_KEY => [$this->UpdateRemoteKeyList(...), '%d remote keys read.', 'remote keys'],
+                self::VAR_IDENT_INPUT_SOURCE    => [$this->GetSourceListInfo(...), '%d inputs read.', 'inputs'],
+                self::VAR_IDENT_APPLICATION     => [$this->UpdateApplicationList(...), '%d apps read.', 'apps'],
             };
             if ($read()) {
                 $sentences[] = sprintf($this->Translate($countFormat), count($this->getListEntries($ident)));
             } else {
-                $sentences[] = sprintf($this->Translate($failureFormat), $this->getFailureReason());
-                $success     = false;
+                $failed[] = $this->Translate($label);
             }
         }
 
+        // die Listen scheitern an derselben Ursache; jede Ermittlung des Grundes kostet bis zu drei Pings
+        if ($failed !== []) {
+            $lists = match (count($failed)) {
+                1       => $failed[0],
+                2       => sprintf($this->Translate('%s and %s'), ...$failed),
+                default => sprintf($this->Translate('%s, %s and %s'), ...$failed),
+            };
+            $sentences[] = sprintf($this->Translate('%s not read: %s'), ucfirst($lists), $this->getFailureReason());
+        }
+
         $this->MsgBox(implode(' ', $sentences));
-        return $success;
+        return $failed === [];
     }
 
     /**
@@ -485,9 +494,10 @@ class SonyTV extends IPSModuleStrict
      */
     private function writeApiInformationWithFeedback(): bool
     {
-        $filename = $this->writeApiInformation('');
+        $writeError = null;
+        $filename   = $this->writeApiInformation('', $writeError);
         if ($filename === null) {
-            $this->MsgBox(sprintf($this->Translate('File not created: %s'), $this->getFailureReason()));
+            $this->MsgBox(sprintf($this->Translate('File not created: %s'), $writeError ?? $this->getFailureReason()));
             return false;
         }
 
@@ -496,8 +506,9 @@ class SonyTV extends IPSModuleStrict
     }
 
     /**
-     * Grund, warum eine Anfrage gerade gescheitert ist, für die Meldung an den Anwender. Der Schlüssel geht vor,
-     * weil der TV dann antwortet; ein Ping unterscheidet „antwortet nicht" von einer unbrauchbaren Antwort.
+     * Grund, warum eine Anfrage gerade gescheitert ist, für die Meldung an den Anwender. Die Erreichbarkeit geht
+     * vor wie im Instanzstatus (201 vor 203), denn ein abgelehnter Schlüssel kann aus der Zeit stammen, als der TV
+     * noch antwortete. Ein Ping unterscheidet „antwortet nicht" von einer unbrauchbaren Antwort.
      */
     private function getFailureReason(): string
     {
@@ -505,11 +516,11 @@ class SonyTV extends IPSModuleStrict
         if ($configurationError !== 0) {
             return $this->getConfigurationErrorText($configurationError);
         }
+        if (!$this->checkConnection($this->ReadPropertyString(self::PROP_HOST))) {
+            return $this->Translate("TV does not answer: disconnected from mains, 'Remote start' switched off or wrong IP address?");
+        }
         if ($this->GetBuffer(self::BUFFER_PSK_REJECTED) === '1') {
             return $this->Translate('The TV rejected the Pre-Shared Key (error 403). Enter the same key as on the TV.');
-        }
-        if (!$this->ping($this->ReadPropertyString(self::PROP_HOST), self::PING_TIMEOUT_MS)) {
-            return $this->Translate("TV does not answer: disconnected from mains, 'Remote start' switched off or wrong IP address?");
         }
         return $this->Translate('The TV gave no usable answer, details are in the debug output.');
     }
@@ -657,12 +668,21 @@ class SonyTV extends IPSModuleStrict
         }
 
         if ($this->ReadPropertyBoolean(self::PROP_PICTURE_SETTINGS)) {
-            $count = count($this->getPictureSettings());
-            $add(
-                $count === 0 ? 'warn' : 'ok',
-                sprintf($this->Translate('%d picture settings read (variables Picture…)'), $count),
-                $count === 0 ? $this->Translate('The TV reports them only while it is on; they are read with the next update.') : ''
-            );
+            // ein Ziel, das der TV nicht mehr meldet, bleibt im Attribut, ist aber nicht schaltbar
+            $settings = $this->getPictureSettings();
+            if ($settings === []) {
+                $add(
+                    'warn',
+                    sprintf($this->Translate('%d picture settings read (variables Picture…)'), 0),
+                    $this->Translate("The TV reports them only while it is on. Read them with IPS_RequestAction(\$InstanceID, 'UpdateAll', 0) while the TV is on.")
+                );
+            } else {
+                $add('ok', sprintf(
+                    $this->Translate('%d picture settings read, %d of them switchable (variables Picture…)'),
+                    count($settings),
+                    count(array_filter(array_column($settings, 'available')))
+                ));
+            }
         }
 
         return $summary();
@@ -865,8 +885,14 @@ class SonyTV extends IPSModuleStrict
      */
     private function readListAttribute(string $attribute): array
     {
+        // Reload-Fenster: Code schon neu, Attribut noch nicht registriert, dann liefert der Kernel false statt
+        // eines Strings (am nuc im iCal-Modul belegt, 04.10.2026)
+        $json = $this->ReadAttributeString($attribute);
+        if (!is_string($json)) {
+            return [];
+        }
         try {
-            $list = json_decode($this->ReadAttributeString($attribute), true, 512, JSON_THROW_ON_ERROR);
+            $list = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             return [];
         }
@@ -954,11 +980,12 @@ class SonyTV extends IPSModuleStrict
     }
 
     /**
-     * Schreibt die Supportdatei und liefert ihren Pfad, null bei einem Fehlschlag.
+     * Schreibt die Supportdatei und liefert ihren Pfad, null bei einem Fehlschlag. Scheitert das Schreiben,
+     * steht der Grund in $writeError, sonst hat der TV nicht geantwortet.
      *
      * @throws \JsonException
      */
-    private function writeApiInformation(string $filename): ?string
+    private function writeApiInformation(string $filename, ?string &$writeError = null): ?string
     {
         $response = $this->callRestApi('system', 'getSystemInformation', [], '1.0', [], []);
         $result   = $this->getResult($response);
@@ -967,7 +994,8 @@ class SonyTV extends IPSModuleStrict
         }
 
         if ($filename === '') {
-            $filename = IPS_GetLogDir() . 'Sony ' . $result[0]['model'] . '.txt';
+            // Zeichen, die Windows im Dateinamen nicht erlaubt, ergäben keinen gültigen Pfad
+            $filename = IPS_GetLogDir() . 'Sony ' . preg_replace('/[\\\\\/:*?"<>|]/', '_', (string)$result[0]['model']) . '.txt';
         }
 
         $fileContent = PHP_EOL . 'SystemInformation: ' . $response . PHP_EOL . PHP_EOL;
@@ -979,7 +1007,14 @@ class SonyTV extends IPSModuleStrict
 
         $this->Logger_Inf('Writing API Information to \'' . $filename . '\'');
 
-        return file_put_contents($filename, $fileContent) > 0 ? $filename : null;
+        if (@file_put_contents($filename, $fileContent) === false) {
+            $reason     = preg_replace('/^file_put_contents\(.*\): /', '', error_get_last()['message'] ?? '');
+            $writeError = sprintf($this->Translate('The file %s could not be written: %s'), $filename, $reason);
+            $this->Logger_Err(sprintf('The file %s could not be written: %s', $filename, $reason));
+            return null;
+        }
+
+        return $filename;
     }
 
     /**
@@ -1844,10 +1879,10 @@ class SonyTV extends IPSModuleStrict
      *
      * @throws \JsonException
      */
-    private function updatePictureSettings(): bool
+    private function updatePictureSettings(): void
     {
         if (!$this->ReadPropertyBoolean(self::PROP_PICTURE_SETTINGS)) {
-            return true;
+            return;
         }
 
         // 7 und 40005 melden die übrigen Abfragen bei einer App im Vordergrund bzw. dunklem Bildschirm;
@@ -1857,20 +1892,27 @@ class SonyTV extends IPSModuleStrict
         ]);
         $result = $this->getResult($response);
         if (!is_array($result[0] ?? null)) {
-            return false;
+            return;
         }
 
         // ein Ziel, das der TV nicht mehr meldet, behält seine Variable, ist aber nicht schaltbar
         $known    = $this->readListAttribute(self::ATTR_PICTURE_SETTINGS);
         $settings = array_map(static fn (array $setting): array => array_merge($setting, ['available' => false]), $known);
         $values   = [];
+        $reported = [];
         foreach ($result[0] as $entry) {
             $setting = is_array($entry) ? $this->parsePictureSetting($entry) : null;
             if ($setting === null) {
                 $this->Logger_Dbg(__FUNCTION__, 'Unexpected picture setting: ' . json_encode($entry, JSON_THROW_ON_ERROR));
                 continue;
             }
-            $ident            = self::VAR_IDENT_PICTURE_PREFIX . ucfirst((string)preg_replace('/[^A-Za-z0-9]/', '', $setting['target']));
+            $ident = self::VAR_IDENT_PICTURE_PREFIX . ucfirst((string)preg_replace('/[^A-Za-z0-9]/', '', $setting['target']));
+            // zwei Ziele, die sich nur in Sonderzeichen unterscheiden, ergäben denselben Ident; das zuerst gemeldete behält ihn
+            if (isset($reported[$ident])) {
+                $this->Logger_Dbg(__FUNCTION__, sprintf('Picture setting %s skipped, ident %s belongs to %s', $setting['target'], $ident, $reported[$ident]));
+                continue;
+            }
+            $reported[$ident] = $setting['target'];
             $settings[$ident] = $setting;
 
             $current = $entry['currentValue'] ?? null;
@@ -1889,8 +1931,6 @@ class SonyTV extends IPSModuleStrict
         foreach ($values as $ident => $value) {
             $this->SetValue($ident, $value);
         }
-
-        return true;
     }
 
     /**
@@ -1940,6 +1980,10 @@ class SonyTV extends IPSModuleStrict
         if (!$this->ReadPropertyBoolean(self::PROP_PICTURE_SETTINGS)) {
             foreach (array_keys($settings) as $ident) {
                 $this->UnregisterVariable($ident);
+            }
+            // sonst entfernt jedes weitere Übernehmen dieselben Variablen erneut
+            if ($settings !== []) {
+                $this->WriteAttributeString(self::ATTR_PICTURE_SETTINGS, '{}');
             }
             return;
         }

@@ -153,11 +153,14 @@ if (array_key_exists('PictureSharpness', $picture($d))) {
     pruefe(($d->optionen('PictureColorTemperature')['cool'] ?? '') === 'Kalt' && ($d->optionen('PictureAutoLocalDimming')['off'] ?? '') === 'Aus', 'deutsch: Optionen Kalt, Aus');
 }
 $selbsttest = $d->RunSelfTest();
-pruefe(str_contains($selbsttest, '✓ 13 Bildeinstellungen eingelesen (Variablen Picture…)'), 'Selbsttest: Zeile „13 Bildeinstellungen eingelesen"');
+pruefe(str_contains($selbsttest, '✓ 13 Bildeinstellungen eingelesen, 9 davon schaltbar (Variablen Picture…)'), 'Selbsttest: Zeile „13 Bildeinstellungen eingelesen, 9 davon schaltbar"');
 $leer = konfigurierteInstanz('standby');
 IPS_SetProperty($leer->id(), 'ShowPictureSettings', true);
 IPS_ApplyChanges($leer->id());
-pruefe(str_contains($leer->RunSelfTest(), '⚠ 0 Bildeinstellungen eingelesen'), 'Selbsttest, Schalter an, nur Standby erlebt: Warnung „0 Bildeinstellungen"');
+$selbsttest = $leer->RunSelfTest();
+pruefe(str_contains($selbsttest, '⚠ 0 Bildeinstellungen eingelesen'), 'Selbsttest, Schalter an, nur Standby erlebt: Warnung „0 Bildeinstellungen"');
+// bei Intervall 0 kommt keine „nächste Aktualisierung", der Hinweis nennt deshalb den Aufruf (Review 24.10.2026)
+pruefe(str_contains($selbsttest, "IPS_RequestAction(\$InstanceID, 'UpdateAll', 0)"), 'Selbsttest, 0 Bildeinstellungen: Hinweis nennt UpdateAll');
 SonyTVHarness::$sprache = null;
 
 // --- andere Modelle: Sonys Referenz erlaubt min/max/step = -1 bei Wertelisten, value "" bei Bereichen und
@@ -194,10 +197,26 @@ pruefe(
 pruefe(!array_key_exists('PictureSharpness', $werteA), 'Bereich mit Schrittweite 0,5: übersprungen statt verfälscht');
 pruefe(count($werteA) === 12, 'übrige Ziele unverändert: 12 Variablen');
 
+// --- zwei Ziele mit demselben Ident (Review 24.10.2026, Mitschnitt verändert: sharpness heißt h_ue, ein solches
+// Modell ist nicht belegt): das zuerst gemeldete Ziel behält den Ident, das zweite wird übersprungen ---
+$doppelt = str_replace('"target":"sharpness"', '"target":"h_ue"', $lesen);
+$k       = konfigurierteInstanz('aktiv');
+$k->antworten['video/getPictureQualitySettings'] = $doppelt;
+$k->antworten['video/setPictureQualitySettings'] = mitschnitt('aktiv', 'video_setPictureQualitySettings');
+IPS_SetProperty($k->id(), 'ShowPictureSettings', true);
+IPS_ApplyChanges($k->id());
+pruefe(($picture($k)['PictureHue'] ?? null) === 0, 'doppelter Ident: PictureHue behält den Wert von hue (0)');
+$k->marke();
+meldungVon(fn () => $k->RequestAction('PictureHue', 10));
+$set = $videoAnfragen($k);
+pruefe(($set[0]['params'][0]['settings'][0]['target'] ?? null) === 'hue', 'doppelter Ident: PictureHue schaltet hue');
+
 // --- Schalter wieder aus: Variablen entfallen ---
 IPS_SetProperty($m->id(), 'ShowPictureSettings', false);
 IPS_ApplyChanges($m->id());
 pruefe($picture($m) === [], 'Schalter wieder aus: Bildvariablen entfernt');
+// die gemerkten Ziele werden mit abgeräumt, sonst entfernt jedes weitere Übernehmen sie erneut (Review 24.10.2026)
+pruefe(json_decode($m->attribut('PictureSettings'), true) === [], 'Schalter wieder aus: Attribut PictureSettings leer');
 pruefe(meldungVon(fn () => $m->RequestAction('PictureSharpness', 50)) === 'Unexpected ident: PictureSharpness', 'Schalter aus: PictureSharpness ist ein unbekannter Ident');
 
 ergebnis();

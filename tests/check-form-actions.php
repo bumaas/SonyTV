@@ -119,6 +119,62 @@ $a->meldungsfenster();
 meldungVon(fn () => $a->RequestAction('UpdateStatusVariables', 0));
 pruefe($a->meldungsfenster() === 'Status variables not updated: The TV gave no usable answer, details are in the debug output.', 'Aussetzer: Statusvariablen melden den Grund');
 
+// Review 24.10.2026: die Erreichbarkeit geht vor dem Schlüssel wie im Instanzstatus (201 vor 203). Erst falscher
+// Schlüssel (Mitschnitt), dann ist der TV nicht mehr erreichbar (simuliert).
+$p = konfigurierteInstanz('aktiv');
+$p->antwortenAus('falscher-psk');
+meldungVon(fn () => $p->RequestAction('UpdateApplicationList', 0));
+SonyTVHarness::$ping = false;
+foreach (['system/getPowerStatus', 'appControl/getApplicationList'] as $schluessel) {
+    $p->antworten[$schluessel] = 7; // CURLE_COULDNT_CONNECT
+}
+$p->meldungsfenster();
+meldungVon(fn () => $p->RequestAction('UpdateApplicationList', 0));
+pruefe(str_starts_with((string)$p->meldungsfenster(), 'Apps not read: TV does not answer'), 'erst falscher Schlüssel, dann nicht erreichbar: Grund „antwortet nicht"');
+SonyTVHarness::$ping = true;
+
+// ein verlorenes Ping-Paket macht einen eingeschalteten TV nicht zu „antwortet nicht" (drei Pings wie checkConnection)
+$s                                          = konfigurierteInstanz('aktiv');
+$s->antworten['appControl/getApplicationList'] = 28; // CURLE_OPERATION_TIMEDOUT
+SonyTVHarness::$ping                         = [false];
+$s->meldungsfenster();
+meldungVon(fn () => $s->RequestAction('UpdateApplicationList', 0));
+pruefe($s->meldungsfenster() === 'Apps not read: The TV gave no usable answer, details are in the debug output.', 'ein verlorener Ping: Grund „keine verwertbare Antwort"');
+SonyTVHarness::$ping = true;
+
+// TV nicht erreichbar, alle drei Listen scheitern: der Grund wird einmal ermittelt und steht einmal da
+SonyTVHarness::$ping = false;
+$n->marke();
+$n->meldungsfenster();
+meldungVon(fn () => $n->RequestAction('UpdateLists', 0));
+pruefe(count($n->pings) === 1, 'drei gescheiterte Listen: ein Ping (' . count($n->pings) . ')');
+pruefe(
+    $n->meldungsfenster() === "Remote keys, inputs and apps not read: TV does not answer: disconnected from mains, 'Remote start' switched off or wrong IP address?",
+    'drei gescheiterte Listen: Grund einmal genannt'
+);
+SonyTVHarness::$ping = true;
+
+// die Datei lässt sich nicht schreiben (ein Ordner mit ihrem Namen liegt im Weg): Grund ist der Schreibfehler,
+// nicht der TV, und es wird nicht gepingt
+$w = konfigurierteInstanz('aktiv');
+foreach (glob(__DIR__ . '/fixtures/aktiv/*_getMethodTypes.json') as $datei) {
+    $w->antworten[basename($datei, '_getMethodTypes.json') . '/getMethodTypes'] = (string)file_get_contents($datei);
+}
+mkdir($erwartet);
+$w->marke();
+$w->meldungsfenster();
+meldungVon(fn () => $w->RequestAction('WriteAPIInformationToFile', 0));
+$text = (string)$w->meldungsfenster();
+rmdir($erwartet);
+pruefe(str_starts_with($text, 'File not created: The file ' . $erwartet . ' could not be written'), 'Schreibfehler: Meldung nennt die Datei (' . $text . ')');
+pruefe($w->pings === [], 'Schreibfehler: kein Ping');
+
+// ein Modellname mit „/" (Mitschnitt verändert, ein solches Modell ist nicht belegt) ergibt trotzdem eine Datei
+$w->antworten['system/getSystemInformation'] = str_replace('"model":"KD-75XE9405"', '"model":"KD-75/XE9405"', $w->antworten['system/getSystemInformation']);
+meldungVon(fn () => $w->RequestAction('WriteAPIInformationToFile', 0));
+pruefe($w->meldungsfenster() === 'File created: ' . $logDir . 'Sony KD-75_XE9405.txt', 'Modellname mit „/": Datei mit „_"');
+@unlink($logDir . 'Sony KD-75_XE9405.txt');
+
 // auf Deutsch bleibt nichts englisch
 SonyTVHarness::$sprache = 'de';
 $d = konfigurierteInstanz('aktiv');
@@ -127,6 +183,13 @@ pruefe($d->meldungsfenster() === "$tasten Tasten eingelesen. $eingaenge Eingäng
 $d->antwortenAus('falscher-psk');
 meldungVon(fn () => $d->RequestAction('UpdateApplicationList', 0));
 pruefe($d->meldungsfenster() === 'Apps nicht eingelesen: Der Fernseher hat den Pre-Shared Key abgelehnt (Fehler 403). Denselben Schlüssel wie am Fernseher eintragen.', 'deutsch: Grund übersetzt');
+SonyTVHarness::$ping = false;
+foreach (['system/getRemoteControllerInfo', 'avContent/getCurrentExternalInputsStatus', 'appControl/getApplicationList'] as $schluessel) {
+    $d->antworten[$schluessel] = 7; // CURLE_COULDNT_CONNECT
+}
+meldungVon(fn () => $d->RequestAction('UpdateLists', 0));
+pruefe(str_starts_with((string)$d->meldungsfenster(), 'Tasten, Eingänge und Apps nicht eingelesen: Fernseher antwortet nicht'), 'deutsch: drei gescheiterte Listen');
+SonyTVHarness::$ping = true;
 SonyTVHarness::$sprache = null;
 
 ergebnis();

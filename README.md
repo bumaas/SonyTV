@@ -20,7 +20,7 @@ Steuert Sony-Bravia-Fernseher über das Netzwerk: ein- und ausschalten, Lautstä
 ## 1. Wann brauche ich das?
 
 - **Der Fernseher soll in Szenen mitspielen.** „Fernsehabend“ schaltet den TV ein, wählt den Eingang des Receivers und stellt die Lautstärke ein; beim Verlassen des Hauses geht er aus.
-- **Der Zustand des Fernsehers soll andere Dinge steuern.** Läuft der TV, wird das Licht gedimmt oder die Beschattung gefahren – dafür gibt es die Statusvariable *Status*.
+- **Der Zustand des Fernsehers soll andere Dinge steuern.** Läuft der TV, wird das Licht gedimmt oder die Beschattung gefahren. Dafür gibt es die Statusvariable *Status*.
 - **Die Fernbedienung soll in der Visualisierung liegen.** Eingänge, Apps und alle Tasten, die der Fernseher kennt, stehen als Auswahllisten zur Verfügung.
 
 ## 2. Installation und erster Lauf
@@ -72,7 +72,7 @@ Unter *Experten Einstellungen* stehen drei Schalter für die Protokollierung:
 | IP-Adresse ist nicht gültig | `Host` ist keine IP-Adresse | IP-Adresse statt Hostnamen eintragen |
 | Das Aktualisierungsintervall darf nicht negativ sein | `UpdateInterval` ist kleiner als 0 | 0 (keine Aktualisierung) oder eine Zahl von Sekunden eintragen |
 
-Beide Fehler stehen beim Wechsel einmal im Log von Symcon, ebenso ihre Behebung (`TV … answers again.`, `Pre-Shared Key accepted …`). Der Status „Pre-Shared Key abgelehnt" bleibt stehen, bis ein Befehl mit Schlüssel gelingt – Ein/Aus-Zustand, Lautstärke, Eingänge, Fernbedienungstasten und Bildeinstellungen meldet der Fernseher auch ohne gültigen Schlüssel, ihre Abfrage sagt darüber also nichts.
+Beide Fehler stehen beim Wechsel einmal im Log von Symcon, ebenso ihre Behebung (`TV … answers again.`, `Pre-Shared Key accepted …`). Der Status „Pre-Shared Key abgelehnt" bleibt stehen, bis ein Befehl mit Schlüssel gelingt. Ein/Aus-Zustand, Lautstärke, Eingänge, Fernbedienungstasten und Bildeinstellungen meldet der Fernseher auch ohne gültigen Schlüssel, ihre Abfrage sagt darüber also nichts.
 
 Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualisierung, und Schaltbefehle werden abgewiesen. Im Log von Symcon steht der Fehler zusätzlich mit dem eingetragenen Wert, z. B. `Configuration error: update interval -5 is not valid (allowed: 0 or more seconds).`
 
@@ -80,7 +80,7 @@ Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualis
 
 | Name | Ident | Darstellung | Bedeutung |
 | :--- | :---- | :---------- | :-------- |
-| Status | `PowerStatus` | Aufzählung | Aus / nicht erreichbar, Standby oder Eingeschaltet. Auswahl *Eingeschaltet* schaltet ein; *Aus / nicht erreichbar* und *Standby* schalten beide in den Standby – ganz ausschalten lässt sich der Fernseher über das Netzwerk nicht. *Aus / nicht erreichbar* erscheint nur, wenn der Fernseher nicht antwortet. |
+| Status | `PowerStatus` | Aufzählung | Aus / nicht erreichbar, Standby oder Eingeschaltet. Auswahl *Eingeschaltet* schaltet ein; *Aus / nicht erreichbar* und *Standby* schalten beide in den Standby, ganz ausschalten lässt sich der Fernseher über das Netzwerk nicht. *Aus / nicht erreichbar* erscheint nur, wenn der Fernseher nicht antwortet. |
 | Mute | `AudioMute` | Schalter | Stummschaltung |
 | Lautstärke Lautsprecher | `SpeakerVolume` | Schieberegler 0–100 % | Lautstärke der Lautsprecher |
 | Lautstärke Kopfhörer | `HeadphoneVolume` | Schieberegler 0–100 % | Lautstärke des Kopfhörerausgangs |
@@ -88,7 +88,7 @@ Bei den drei Konfigurationsfehlern (IP-Adresse, Intervall) läuft keine Aktualis
 | Eingangsquelle | `InputSource` | Aufzählung | Laufender Eingang; Auswahl schaltet um |
 | Starte Applikation | `Application` | Aufzählung | Auswahl startet die App |
 
-Die Auswahllisten für Tasten, Eingänge und Apps kommen vom Fernseher selbst und stehen direkt an der jeweiligen Variable – bei mehreren Fernsehern also je Gerät getrennt und ohne Begrenzung der Anzahl. Jeder Eintrag hat eine feste Nummer als Wert. Sie bleibt ihm erhalten, auch wenn später Apps hinzukommen oder entfallen; -1 steht für „keine Auswahl“.
+Die Auswahllisten für Tasten, Eingänge und Apps kommen vom Fernseher selbst und stehen direkt an der jeweiligen Variable, bei mehreren Fernsehern also je Gerät getrennt und ohne Begrenzung der Anzahl. Jeder Eintrag hat eine feste Nummer als Wert. Sie bleibt ihm erhalten, auch wenn später Apps hinzukommen oder entfallen; -1 steht für „keine Auswahl“.
 
 **Bildeinstellungen.** Mit dem Schalter `ShowPictureSettings` legt die Instanz für jede Bildeinstellung, die der Fernseher meldet, eine Variable an, beim KD-75XE9405 sind es 13. Der Ident ist `Picture` plus der Name beim Fernseher, also `PictureSharpness`, `PictureBrightness` oder `PictureColorTemperature`. Einstellungen mit Zahlenbereich (Helligkeit, Kontrast, Farbe, Farbton, Schärfe) werden Schieberegler mit den Grenzen des Fernsehers, die übrigen Aufzählungen. Deren Wert ist der Text des Fernsehers, z. B. `warm` oder `medium`, und so schaltet man sie auch: `RequestAction(IPS_GetObjectIDByIdent('PictureColorTemperature', $tv), 'warm')`.
 
@@ -96,7 +96,7 @@ Die Werte gelten für den Eingang und den Bildmodus, die gerade laufen. Wechselt
 
 Die Variablen zeigen einen Eingang, eine App oder eine Taste erst, wenn der Fernseher den Befehl angenommen hat. Läuft keiner der Eingänge aus der Liste, steht *Eingangsquelle* auf „-“. *Aus / nicht erreichbar* heißt: Der Fernseher antwortet nicht im Netzwerk.
 
-**Hinweis für Nutzer älterer Versionen:** Bis 2.1 build 27 nutzte das Modul die Variablenprofile `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` und `STV.Applications`. Sie werden automatisch gelöscht, sobald keine Variable und kein Diagramm sie mehr verwendet. Hat eine Variable eines dieser Profile als eigenes Profil eingetragen, bleibt es dort stehen und wird nicht mehr aktualisiert – dann in den Variableneinstellungen das eigene Profil entfernen, damit die Darstellung des Moduls greift. Solange Symcon ein Diagramm nicht lesen kann, bleiben die Profile vorsichtshalber erhalten.
+**Hinweis für Nutzer älterer Versionen:** Bis 2.1 build 27 nutzte das Modul die Variablenprofile `STV.PowerStatus`, `STV.Volume`, `STV.RemoteKey`, `STV.Sources` und `STV.Applications`. Sie werden automatisch gelöscht, sobald keine Variable und kein Diagramm sie mehr verwendet. Hat eine Variable eines dieser Profile als eigenes Profil eingetragen, bleibt es dort stehen und wird nicht mehr aktualisiert. Dann in den Variableneinstellungen das eigene Profil entfernen, damit die Darstellung des Moduls greift. Solange Symcon ein Diagramm nicht lesen kann, bleiben die Profile vorsichtshalber erhalten.
 
 ## 4. Automatisieren
 
@@ -131,7 +131,7 @@ STV_StartApplication(int $InstanzID, string $App): bool;   // z. B. 'YouTube'
 STV_SendRemoteKey(int $InstanzID, string $Taste): bool;    // z. B. 'Home', 'VolumeUp'
 ```
 
-Alle liefern `true`, wenn der Fernseher den Befehl bestätigt hat. `STV_SetPowerStatus` liefert auch dann `true`, wenn der Fernseher danach im gewünschten Zustand ist, ohne geantwortet zu haben – beim Einschalten kommt das vor.
+Alle liefern `true`, wenn der Fernseher den Befehl bestätigt hat. `STV_SetPowerStatus` liefert auch dann `true`, wenn der Fernseher danach im gewünschten Zustand ist, ohne geantwortet zu haben. Beim Einschalten kommt das vor.
 
 Die Namen von Eingängen, Apps und Tasten sind je Gerät verschieden; gültig ist, was in den Auswahllisten der Statusvariablen steht. `STV_SetHeadphoneVolume` unterstützt nicht jedes Modell (der KD-65X8505B antwortet mit `40800 - target not supported`).
 
@@ -161,7 +161,7 @@ STV_WriteAPIInformationToFile(int $InstanzID, string $Dateiname): bool;
 STV_SendRestAPIRequest(int $InstanzID, string $Service, string $Methode, string $Parameter, string $Version): string;
 ```
 
-`STV_WriteAPIInformationToFile` schreibt alle Funktionen, die der Fernseher kennt, in eine Datei – mit leerem Dateinamen (`''`) als *Sony \<Modell\>.txt* ins Log-Verzeichnis von Symcon. Der Parameter muss immer angegeben werden. Diese Datei hilft bei Supportanfragen. Im Formular erstellt sie der Knopf *Datei mit API-Informationen erstellen* im Bereich *Support* und nennt danach ihren Pfad.
+`STV_WriteAPIInformationToFile` schreibt alle Funktionen, die der Fernseher kennt, in eine Datei, mit leerem Dateinamen (`''`) als *Sony \<Modell\>.txt* ins Log-Verzeichnis von Symcon. Der Parameter muss immer angegeben werden. Diese Datei hilft bei Supportanfragen. Im Formular erstellt sie der Knopf *Datei mit API-Informationen erstellen* im Bereich *Support* und nennt danach ihren Pfad.
 
 `STV_SendRestAPIRequest` sendet eine beliebige Anfrage an den Fernseher, um Funktionen auszuprobieren, die das Modul nicht selbst anbietet. `$Parameter` ist die Parameterliste als JSON, also immer in eckigen Klammern; zurück kommt die Antwort des Fernsehers als JSON, bei einem Fehler ein Leerstring:
 

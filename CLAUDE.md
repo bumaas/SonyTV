@@ -75,7 +75,12 @@ Attribut `PictureSettings`; die Variablen werden nur neu registriert, wenn sich 
 false` heißt keine Aktion (`DisableAction`), ein nicht mehr gemeldetes Ziel behält seine Variable ohne Aktion. Namen
 für Ziele und Werte stehen in `PICTURE_TARGET_NAMES`/`PICTURE_VALUE_NAMES` (Stand KD-75XE9405), Unbekanntes erscheint
 roh. Ein Wert außerhalb des Bereichs (Schärfe 500) beantwortet der TV mit `[3, "Illegal Argument"]` und übernimmt
-nichts (24.10.2026, nur im Log gesehen, nicht als Fixture). `tests/check-picture-settings.php` hält das fest.
+nichts (24.10.2026, nur im Log gesehen, nicht als Fixture). Zwei Ziele, die sich nur in Sonderzeichen unterscheiden,
+ergäben denselben Ident; das zuerst gemeldete behält ihn, das zweite steht nur im Debug. Geht der Schalter aus, werden
+die Variablen entfernt und das Attribut geleert. Der Selbsttest nennt die Zahl der Ziele und wie viele davon schaltbar
+sind; nicht mehr gemeldete Ziele zählen mit, aber nicht als schaltbar. `readListAttribute()` liefert im Reload-Fenster
+(Attribut noch nicht registriert, der Kernel gibt `false`) eine leere Liste; der Stub kann das nicht nachstellen.
+`tests/check-picture-settings.php` hält das fest.
 
 ## Protokoll
 
@@ -101,9 +106,14 @@ Seit 2.3 build 48 (Durchsicht aus Anwendersicht am 24.10.2026): Jeder Knopf hat 
 ihn braucht, nicht was die Beschriftung schon sagt. Die drei Listen liest ein Knopf `UpdateLists`; die Idents je
 Liste (`UpdateRemoteKeyList`, `GetSourceListInfo`, `UpdateApplicationList`) bleiben für Skripte. Die API-Datei steht
 im Panel „Support". Die Meldungsfenster nennen Anzahlen, Zustand oder Pfad, bei einem Fehlschlag den Grund aus
-`getFailureReason()` (Konfiguration, dann Buffer `pskRejected`, dann ein Ping, sonst „keine verwertbare Antwort").
-Ein nicht erreichbarer TV ist für „Update status variables" kein Fehlschlag: `UpdateAll` liefert true und die
-Meldung „Aus / nicht erreichbar". `tests/check-form-actions.php` hält das fest.
+`getFailureReason()`: Konfiguration, dann Erreichbarkeit über `checkConnection()` (drei Pings, bei „Aus" einer), erst
+danach Buffer `pskRejected`, sonst „keine verwertbare Antwort". Die Reihenfolge folgt dem Instanzstatus (201 vor 203),
+weil der Buffer aus der Zeit stammen kann, als der TV noch antwortete (Review build 49). Scheitern mehrere Listen,
+wird der Grund einmal ermittelt und einmal genannt („Tasten, Eingänge und Apps nicht eingelesen: …“). Scheitert bei
+der API-Datei das Schreiben, nennt die Meldung den Schreibfehler, nicht den TV; Zeichen, die Windows im Dateinamen
+nicht erlaubt, ersetzt das Modul im Modellnamen durch `_`. Ein nicht erreichbarer TV ist für „Update status
+variables" kein Fehlschlag: `UpdateAll` liefert true und die Meldung „Aus / nicht erreichbar".
+`tests/check-form-actions.php` hält das fest.
 
 ## Nähte für die Tests
 
